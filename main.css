@@ -1,0 +1,42 @@
+
+div   {
+    color:      red;
+    font-size:   40px;
+    text-align-last: center;
+    background-color:rgb(31, 26, 26);
+    height: 75px;
+    width:  50px:
+}
+h2   {
+    color:      blue;
+    font-size:  18px
+}
+h3   {
+    color:      yellow;
+    font-size:  14px;
+}
+h4   {
+    color: green
+    font-size:   14px;
+}  
+h5   {  
+    color:       black;
+    font-size:   14px;
+}
+h6  { 
+    color: yellow
+    font-size: 14px
+}
+p  {
+    color: rgb(0, 0, 0);
+    font-size:  16px;
+    font-style: normal;
+    font-family: 'Times New Roman', Times, serif;
+    font-weight: 600;
+}
+a  [
+    feColorMatrix: :read-only:
+    feConvolveMatrix: 14px
+]
+
+
