@@ -45,7 +45,7 @@ export function openPause({ onWrite } = {}) {
           <button type="button" class="btn btn-light" id="pause-write">${t('Write my gratitude')}</button>
           <button type="button" class="btn btn-ghost-light" id="pause-finish">${t('Not now')}</button>
         </div>
-        <a class="pause-music" href="${esc(BRAND.musicUrl)}" target="_blank" rel="noopener">🎵 ${esc(t('Enjoyed the calm? Explore more {site} music', { site: BRAND.siteName }))}</a>
+        <a class="pause-music" href="${esc(BRAND.musicUrl)}" target="_blank" rel="noopener">🎵 ${esc(t('Enjoyed the calm? Explore {site} relaxation playlists', { site: BRAND.siteName }))}</a>
       </div>
     </div>`;
   document.body.appendChild(host);

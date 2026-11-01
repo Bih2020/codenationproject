@@ -378,6 +378,7 @@ await t('insights, weekly summary and streaks with seeded history', async () => 
   await page.goto(`${URL_}#/insights`);
   assert.match(await page.textContent('.streak-big'), /8-day gratitude streak/);
   assert.match(await page.textContent('.milestones'), /7-day streak\s*Reached/);
+  assert.equal(await page.getAttribute('.from-brand a', 'href'), 'https://gemrhythm.com/playlist-category/relaxation/');
   await page.waitForTimeout(700); await page.screenshot({ path: `${shots}insights.png`, fullPage: true });
   await page.click('a.week-link[href="#/week"]');
   await page.waitForSelector('.week-grid');
@@ -438,7 +439,7 @@ await t('share card from an entry, and the gratitude pause', async () => {
   await page.waitForTimeout(500); await page.screenshot({ path: `${shots}pause.png` });
   await page.clock.runFor('01:01');
   await page.waitForSelector('#pause-done:not([hidden])');
-  assert.equal(await page.getAttribute('.pause-music', 'href'), 'https://gemrhythm.com/shop/');
+  assert.equal(await page.getAttribute('.pause-music', 'href'), 'https://gemrhythm.com/playlist-category/relaxation/');
   await page.click('#pause-write');
   await page.waitForFunction(() => document.activeElement?.id === 'gratitude-text');
   assert.equal(await page.$('.pause-overlay'), null);

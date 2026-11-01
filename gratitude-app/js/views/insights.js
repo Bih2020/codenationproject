@@ -4,6 +4,8 @@ import { summary, milestoneStatus, countThemes, countMoods, moodTimeline, MOODS,
 import { CATEGORIES } from '../prompts.js';
 import { addDays, startOfDay, weekdayName } from '../dates.js';
 import { t, tn, getLocale } from '../i18n.js';
+import { BRAND } from '../config.js';
+import { icons } from '../ui.js';
 
 export function title() {
   return `${t('Insights')} · Gladmoment`;
@@ -104,6 +106,16 @@ export function render(ctx) {
           </ol>`
         : `<p class="muted">${t('Mood check-ins are optional. If you choose a mood when saving gratitude, simple patterns will appear here.')}</p>`}
       <p class="disclaimer">${t('These patterns are a personal reflection aid only. They are not a medical or psychological assessment. If you are struggling, please consider speaking to someone you trust or a health professional.')}</p>
+    </section>
+
+    <section class="card from-brand" aria-labelledby="brand-title">
+      <div class="from-brand-icon" aria-hidden="true">${icons.music}</div>
+      <div class="from-brand-text">
+        <p class="eyebrow">${t('From {site}', { site: BRAND.siteName })}</p>
+        <h2 id="brand-title">${t('Relaxation playlists')}</h2>
+        <p class="muted small">${t('Calming music to help you unwind, rest and keep a grateful heart.')}</p>
+      </div>
+      <a class="btn btn-soft" href="${BRAND.musicUrl}" target="_blank" rel="noopener">${t('Listen now')}</a>
     </section>
   </div>`;
 }

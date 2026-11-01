@@ -682,3 +682,10 @@ body.no-scroll { overflow: hidden; }
 .lang-switch { display: flex; justify-content: flex-end; gap: 6px; margin: -6px 0 6px; }
 .lang-btn { min-height: 40px; padding: 6px 14px; border-radius: 999px; border: 1.5px solid var(--border); background: var(--surface); font-weight: 700; font-size: 0.9rem; color: var(--muted); }
 .lang-btn[aria-pressed='true'] { background: var(--primary-soft); border-color: var(--primary); color: var(--primary-ink); }
+
+/* ---------- From Gemrhythm card ---------- */
+.from-brand { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: linear-gradient(140deg, var(--primary-soft), var(--teal-soft)); }
+.from-brand-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: var(--btn-grad); color: #fff; flex: none; }
+.from-brand-text { flex: 1 1 180px; min-width: 0; }
+.from-brand-text h2 { margin: 0 0 2px; }
+.from-brand-text p { margin: 0; }
