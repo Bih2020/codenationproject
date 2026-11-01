@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Gladmoment
  * Description:       A gentle gratitude reminder and journal. Installs the Gladmoment app at yoursite.com/gladmoment/ and adds the [gladmoment_landing] and [gladmoment_button] shortcodes.
- * Version:           1.4.0
+ * Version:           1.4.1
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Gemrhythm
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GLADMOMENT_VERSION', '1.4.0' );
+define( 'GLADMOMENT_VERSION', '1.4.1' );
 define( 'GLADMOMENT_SLUG', 'gladmoment' );
 define( 'GLADMOMENT_SOURCE', __DIR__ . '/app' );
 define( 'GLADMOMENT_MARKER', '.gladmoment-plugin' );
@@ -69,33 +69,114 @@ function gladmoment_delete_dir( $dir ) {
 	@rmdir( $dir );
 }
 
+/** Clear LiteSpeed Cache (common on Hostinger) so visitors don't see an old "page not found". */
+function gladmoment_purge_cache() {
+	do_action( 'litespeed_purge_all' );
+	if ( function_exists( 'wp_cache_flush' ) ) {
+		wp_cache_flush();
+	}
+}
+
 /**
  * Put the app files in the site root so the web server serves them directly
  * (fast, and lets the app's offline support and reminders work at /gladmoment/).
+ * If a leftover "gladmoment" folder is in the way, it is renamed (never deleted).
+ * If the files can't be written at all, the app is served through WordPress instead.
  */
 function gladmoment_install() {
 	$target = gladmoment_target_dir();
+	update_option( 'gladmoment_moved_folder', '' );
 	if ( is_dir( $target ) && ! file_exists( $target . '/' . GLADMOMENT_MARKER ) ) {
-		// A folder we did not create (for example a manual upload). Leave it alone.
-		if ( file_exists( $target . '/index.html' ) ) {
-			update_option( 'gladmoment_status', 'manual' );
-			update_option( 'gladmoment_installed_version', GLADMOMENT_VERSION );
-			return true;
+		// A folder we did not create, e.g. an earlier manual upload. Keep it, under another name.
+		$moved = $target . '-old-' . gmdate( 'Ymd-His' );
+		if ( @rename( $target, $moved ) ) {
+			update_option( 'gladmoment_moved_folder', basename( $moved ) );
+		} else {
+			update_option( 'gladmoment_status', 'conflict' );
+			gladmoment_purge_cache();
+			return false;
 		}
-		update_option( 'gladmoment_status', 'conflict' );
-		return false;
 	}
 	$ok = gladmoment_copy_dir( GLADMOMENT_SOURCE, $target );
 	if ( $ok ) {
 		@file_put_contents( $target . '/' . GLADMOMENT_MARKER, GLADMOMENT_VERSION );
 		update_option( 'gladmoment_status', 'ok' );
-		update_option( 'gladmoment_installed_version', GLADMOMENT_VERSION );
 	} else {
-		update_option( 'gladmoment_status', 'not_writable' );
+		// Remove a half-copied folder so WordPress can serve the app instead.
+		if ( is_dir( $target ) && file_exists( $target . '/' . GLADMOMENT_MARKER ) === false ) {
+			gladmoment_delete_dir( $target );
+		}
+		update_option( 'gladmoment_status', 'fallback' );
 	}
-	return $ok;
+	update_option( 'gladmoment_installed_version', GLADMOMENT_VERSION );
+	gladmoment_purge_cache();
+	return true;
 }
 register_activation_hook( __FILE__, 'gladmoment_install' );
+
+/**
+ * Fallback: when the app folder isn't in the site root, serve the app's files
+ * from the plugin through WordPress, at the same address.
+ */
+function gladmoment_serve_fallback() {
+	if ( is_admin() || empty( $_SERVER['REQUEST_URI'] ) ) {
+		return;
+	}
+	$path = (string) wp_parse_url( wp_unslash( $_SERVER['REQUEST_URI'] ), PHP_URL_PATH );
+	$home = (string) wp_parse_url( home_url( '/' ), PHP_URL_PATH );
+	$base = rtrim( $home, '/' ) . '/' . GLADMOMENT_SLUG;
+	if ( $path !== $base && 0 !== strpos( $path, $base . '/' ) ) {
+		return;
+	}
+	if ( $path === $base ) {
+		wp_safe_redirect( $base . '/', 301 );
+		exit;
+	}
+	$rel = ltrim( rawurldecode( substr( $path, strlen( $base ) ) ), '/' );
+	if ( '' === $rel ) {
+		$rel = 'index.html';
+	}
+	// Never serve hidden files, and never leave the app folder.
+	foreach ( explode( '/', $rel ) as $part ) {
+		if ( '' === $part || '.' === $part[0] ) {
+			return;
+		}
+	}
+	$root = realpath( GLADMOMENT_SOURCE );
+	$file = realpath( GLADMOMENT_SOURCE . '/' . $rel );
+	if ( ! $root || ! $file || 0 !== strpos( $file, $root . DIRECTORY_SEPARATOR ) || ! is_file( $file ) ) {
+		return;
+	}
+	$types = array(
+		'html'        => 'text/html; charset=utf-8',
+		'js'          => 'text/javascript; charset=utf-8',
+		'css'         => 'text/css; charset=utf-8',
+		'json'        => 'application/json',
+		'webmanifest' => 'application/manifest+json',
+		'svg'         => 'image/svg+xml',
+		'png'         => 'image/png',
+	);
+	$ext = strtolower( pathinfo( $file, PATHINFO_EXTENSION ) );
+	if ( ! isset( $types[ $ext ] ) ) {
+		return;
+	}
+	if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+		define( 'DONOTCACHEPAGE', true );
+	}
+	status_header( 200 );
+	header( 'Content-Type: ' . $types[ $ext ] );
+	header( 'X-Content-Type-Options: nosniff' );
+	if ( in_array( basename( $file ), array( 'index.html', 'sw.js' ), true ) ) {
+		header( 'Cache-Control: no-cache' );
+		header( 'X-LiteSpeed-Cache-Control: no-cache' );
+	} else {
+		header( 'Cache-Control: public, max-age=3600' );
+	}
+	header( 'Content-Length: ' . filesize( $file ) );
+	readfile( $file );
+	exit;
+}
+add_action( 'init', 'gladmoment_serve_fallback', 0 );
 
 /** Remove the app files we installed when the plugin is deactivated. */
 function gladmoment_uninstall_files() {
@@ -112,7 +193,7 @@ register_deactivation_hook( __FILE__, 'gladmoment_uninstall_files' );
 add_action(
 	'admin_init',
 	function () {
-		if ( get_option( 'gladmoment_installed_version' ) !== GLADMOMENT_VERSION && 'manual' !== get_option( 'gladmoment_status' ) ) {
+		if ( get_option( 'gladmoment_installed_version' ) !== GLADMOMENT_VERSION ) {
 			gladmoment_install();
 		}
 	}
@@ -131,12 +212,11 @@ add_action(
 		}
 		$status = get_option( 'gladmoment_status' );
 		$url    = esc_url( gladmoment_url() );
-		if ( 'ok' === $status || 'manual' === $status ) {
-			echo '<div class="notice notice-success"><p><strong>Gladmoment is live:</strong> <a href="' . $url . '" target="_blank" rel="noopener">' . $url . '</a>. Add it to a menu, or use the shortcode <code>[gladmoment_button]</code> on any page.</p></div>';
-		} elseif ( 'not_writable' === $status ) {
-			echo '<div class="notice notice-error"><p><strong>Gladmoment could not copy its files</strong> into your site folder. Ask your host to allow WordPress to write to <code>' . esc_html( ABSPATH ) . '</code>, or upload the Gladmoment website ZIP with File Manager instead.</p></div>';
+		$page   = esc_url( admin_url( 'options-general.php?page=gladmoment' ) );
+		if ( 'ok' === $status || 'fallback' === $status ) {
+			echo '<div class="notice notice-success"><p><strong>Gladmoment is live:</strong> <a href="' . $url . '" target="_blank" rel="noopener">' . $url . '</a>. Add it to your menu, or use <code>[gladmoment_button]</code> on any page. <a href="' . $page . '">Gladmoment settings</a></p></div>';
 		} elseif ( 'conflict' === $status ) {
-			echo '<div class="notice notice-warning"><p><strong>Gladmoment did not install</strong> because a folder called <code>gladmoment</code> already exists in your site folder. Rename or delete that folder with File Manager, then deactivate and activate this plugin again.</p></div>';
+			echo '<div class="notice notice-warning"><p><strong>Gladmoment needs one small fix.</strong> A folder called <code>gladmoment</code> is in the way. Open <a href="' . $page . '">Settings → Gladmoment</a> for the steps.</p></div>';
 		}
 	}
 );
@@ -155,6 +235,7 @@ function gladmoment_lang( $attr = '' ) {
 add_filter(
 	'plugin_action_links_' . plugin_basename( __FILE__ ),
 	function ( $links ) {
+		array_unshift( $links, '<a href="' . esc_url( admin_url( 'options-general.php?page=gladmoment' ) ) . '">Settings</a>' );
 		array_unshift( $links, '<a href="' . esc_url( gladmoment_url() ) . '" target="_blank" rel="noopener">Open Gladmoment</a>' );
 		return $links;
 	}
@@ -296,3 +377,70 @@ add_shortcode(
 		return ob_get_clean();
 	}
 );
+
+/** Settings → Gladmoment: status, link and a Repair button. */
+add_action(
+	'admin_menu',
+	function () {
+		add_options_page( 'Gladmoment', 'Gladmoment', 'manage_options', 'gladmoment', 'gladmoment_settings_page' );
+	}
+);
+
+add_action(
+	'admin_post_gladmoment_repair',
+	function () {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Not allowed.' );
+		}
+		check_admin_referer( 'gladmoment_repair' );
+		gladmoment_install();
+		wp_safe_redirect( admin_url( 'options-general.php?page=gladmoment&repaired=1' ) );
+		exit;
+	}
+);
+
+function gladmoment_settings_page() {
+	if ( ! current_user_can( 'manage_options' ) ) {
+		return;
+	}
+	$status = get_option( 'gladmoment_status' );
+	$url    = gladmoment_url();
+	$moved  = get_option( 'gladmoment_moved_folder' );
+	$check  = null;
+	if ( 'conflict' !== $status && function_exists( 'wp_remote_get' ) ) {
+		$res = wp_remote_get( add_query_arg( 'check', time(), $url ), array( 'timeout' => 8, 'sslverify' => false ) );
+		if ( ! is_wp_error( $res ) ) {
+			$check = ( 200 === (int) wp_remote_retrieve_response_code( $res ) && false !== strpos( wp_remote_retrieve_body( $res ), 'Gladmoment' ) );
+		}
+	}
+	echo '<div class="wrap"><h1>Gladmoment</h1>';
+	if ( isset( $_GET['repaired'] ) ) {
+		echo '<div class="notice notice-success"><p>Repair finished. Cache cleared.</p></div>';
+	}
+	echo '<p style="font-size:15px">Your app address: <a href="' . esc_url( $url ) . '" target="_blank" rel="noopener"><strong>' . esc_html( $url ) . '</strong></a></p>';
+	if ( true === $check ) {
+		echo '<p style="font-size:15px">✅ <strong>Working.</strong> Visitors can open Gladmoment at the address above.</p>';
+	} elseif ( false === $check ) {
+		echo '<p style="font-size:15px">⚠️ <strong>The address did not open from here.</strong> Click <em>Repair Gladmoment</em> below. If it still does not open, clear your cache plugin and try the address in a private window.</p>';
+	}
+	if ( 'ok' === $status ) {
+		echo '<p>The app files are in your site folder: <code>' . esc_html( gladmoment_target_dir() ) . '</code></p>';
+	} elseif ( 'fallback' === $status ) {
+		echo '<p>WordPress is serving the app from the plugin, because the app files could not be copied into your site folder. This works fine.</p>';
+	} elseif ( 'conflict' === $status ) {
+		echo '<p style="font-size:15px">⚠️ <strong>A folder called <code>gladmoment</code> is in the way</strong> and could not be renamed automatically. In Hostinger File Manager, open <code>public_html</code>, rename the <code>gladmoment</code> folder (for example to <code>gladmoment-old</code>), then click <em>Repair Gladmoment</em>.</p>';
+	}
+	if ( $moved ) {
+		echo '<p>An older <code>gladmoment</code> folder was found and kept as <code>' . esc_html( $moved ) . '</code>. You can delete it in File Manager if you don’t need it.</p>';
+	}
+	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+	wp_nonce_field( 'gladmoment_repair' );
+	echo '<input type="hidden" name="action" value="gladmoment_repair">';
+	submit_button( 'Repair Gladmoment', 'primary', 'submit', false );
+	echo '</form>';
+	echo '<h2>Show Gladmoment to your visitors</h2><ul style="list-style:disc;padding-left:20px">';
+	echo '<li><strong>Menu:</strong> Appearance → Menus → Custom Links → URL <code>' . esc_html( $url ) . '</code></li>';
+	echo '<li><strong>Button on any page:</strong> add a Shortcode block with <code>[gladmoment_button]</code></li>';
+	echo '<li><strong>Full landing section:</strong> <code>[gladmoment_landing]</code> (French: <code>[gladmoment_landing lang="fr"]</code>)</li>';
+	echo '</ul><p>Version ' . esc_html( GLADMOMENT_VERSION ) . '</p></div>';
+}
