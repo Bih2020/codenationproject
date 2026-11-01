@@ -141,8 +141,11 @@ tests/e2e/run.mjs      Playwright browser tests
 ## Publishing Gladmoment
 
 **Live home: https://gemrhythm.com/gladmoment/** (Hostinger, alongside the Gemrhythm WordPress site).
-Upload `gladmoment-website.zip` in hPanel → File Manager → `public_html`, extract it, and purge
-LiteSpeed Cache after each update.
+Easiest: in WordPress go to Plugins → Add New → Upload Plugin, upload
+`gladmoment-wordpress-plugin.zip` (built by `wordpress-plugin/build.sh`) and activate it. The plugin
+copies the app to `/gladmoment/`, adds a `[gladmoment_button]` shortcode, and removes the folder on
+deactivation. Alternative: upload `gladmoment-website.zip` in hPanel → File Manager → `public_html`
+and extract it. Purge LiteSpeed Cache after each update.
 
 1. **Website (free, works on any phone):** turn on GitHub Pages for the repository
    (Settings → Pages → Deploy from a branch → pick the branch and `/ (root)`).
