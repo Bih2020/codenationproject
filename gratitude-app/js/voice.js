@@ -3,6 +3,8 @@
 // Note: in some browsers (e.g. Chrome) audio is processed by the browser vendor's
 // online speech service — the app discloses this before first use.
 
+import { t, getSpeechLang } from './i18n.js';
+
 const Recognition = () => globalThis.SpeechRecognition || globalThis.webkitSpeechRecognition || null;
 
 export function voiceSupported() {
@@ -44,12 +46,12 @@ export function createVoiceInput({ lang, onInterim, onFinal, onStateChange, onEr
 
   function start() {
     if (!Ctor) {
-      onError?.('Voice input isn’t supported in this browser. Try Chrome, Edge or Safari, or type instead.', 'unsupported');
+      onError?.(t('Voice input isn’t supported in this browser. Try Chrome, Edge or Safari, or type instead.'), 'unsupported');
       return false;
     }
     if (listening) return true;
     rec = new Ctor();
-    rec.lang = lang || document.documentElement.lang || navigator.language || 'en-GB';
+    rec.lang = lang || getSpeechLang();
     rec.interimResults = true;
     rec.continuous = true;
     rec.maxAlternatives = 1;
@@ -64,8 +66,8 @@ export function createVoiceInput({ lang, onInterim, onFinal, onStateChange, onEr
       onInterim?.(interim.trim());
     };
     rec.onerror = (ev) => {
-      const msg = VOICE_ERRORS[ev.error] ?? 'Voice input stopped unexpectedly. You can try again or type instead.';
-      if (msg) onError?.(msg, ev.error);
+      const msg = ev.error in VOICE_ERRORS ? VOICE_ERRORS[ev.error] : 'Voice input stopped unexpectedly. You can try again or type instead.';
+      if (msg) onError?.(t(msg), ev.error);
     };
     rec.onend = () => {
       clearTimeout(maxTimer);
@@ -79,7 +81,7 @@ export function createVoiceInput({ lang, onInterim, onFinal, onStateChange, onEr
       maxTimer = setTimeout(stop, 90000);
       return true;
     } catch (err) {
-      onError?.('Voice input could not start. Please try again.', 'start-failed');
+      onError?.(t('Voice input could not start. Please try again.'), 'start-failed');
       rec = null;
       return false;
     }

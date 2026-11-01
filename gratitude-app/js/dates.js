@@ -1,4 +1,5 @@
 // Date & time helpers. All "day keys" are local calendar dates (YYYY-MM-DD).
+import { t, tn, getLocale } from './i18n.js';
 
 export const pad = (n) => String(n).padStart(2, '0');
 
@@ -54,23 +55,23 @@ export function atTime(day, mins) {
   return x;
 }
 
-export function formatTime(value, locale) {
+export function formatTime(value, locale = getLocale()) {
   const d = typeof value === 'string' ? atTime(new Date(), parseTime(value)) : new Date(value);
   return d.toLocaleTimeString(locale, { hour: 'numeric', minute: '2-digit' });
 }
 
-export function formatLongDate(d, locale) {
+export function formatLongDate(d, locale = getLocale()) {
   return new Date(d).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-export function formatShortDate(d, locale) {
+export function formatShortDate(d, locale = getLocale()) {
   return new Date(d).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-export function relativeDayLabel(key, now = new Date(), locale) {
+export function relativeDayLabel(key, now = new Date(), locale = getLocale()) {
   const diff = daysBetween(parseDayKey(key), now);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
+  if (diff === 0) return t('Today');
+  if (diff === 1) return t('Yesterday');
   const d = parseDayKey(key);
   const opts = { weekday: 'long', day: 'numeric', month: 'long' };
   if (d.getFullYear() !== new Date(now).getFullYear()) opts.year = 'numeric';
@@ -80,26 +81,32 @@ export function relativeDayLabel(key, now = new Date(), locale) {
 /** Gentle "x ago" wording for memories. */
 export function agoLabel(date, now = new Date()) {
   const days = daysBetween(date, now);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return `${days} days ago`;
-  if (days < 14) return 'a week ago';
-  if (days < 30) return `${Math.round(days / 7)} weeks ago`;
+  if (days <= 0) return t('today');
+  if (days === 1) return t('yesterday');
+  if (days < 7) return tn(days, '{n} day ago', '{n} days ago');
+  if (days < 14) return t('a week ago');
+  if (days < 30) return tn(Math.round(days / 7), '{n} week ago', '{n} weeks ago');
   if (days < 365) {
     const months = Math.max(1, Math.round(days / 30.44));
-    return months === 1 ? 'a month ago' : `${months} months ago`;
+    return months === 1 ? t('a month ago') : tn(months, '{n} month ago', '{n} months ago');
   }
   const years = Math.round(days / 365.25);
-  return years <= 1 ? 'a year ago' : `${years} years ago`;
+  return years <= 1 ? t('a year ago') : tn(years, '{n} year ago', '{n} years ago');
 }
 
 export function greetingFor(d = new Date()) {
   const h = new Date(d).getHours();
-  if (h < 5) return { text: 'Good evening', emoji: '🌙' };
-  if (h < 12) return { text: 'Good morning', emoji: '☀️' };
-  if (h < 17) return { text: 'Good afternoon', emoji: '🌤️' };
-  return { text: 'Good evening', emoji: '🌙' };
+  if (h < 5) return { text: t('Good evening'), emoji: '🌙' };
+  if (h < 12) return { text: t('Good morning'), emoji: '☀️' };
+  if (h < 17) return { text: t('Good afternoon'), emoji: '🌤️' };
+  return { text: t('Good evening'), emoji: '🌙' };
 }
 
 export const WEEKDAYS_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 export const WEEKDAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
+/** Weekday name in the current language (0 = Sunday). */
+export function weekdayName(dayIndex, style = 'long') {
+  const d = new Date(2026, 10, 1 + dayIndex); // 1 Nov 2026 is a Sunday
+  return d.toLocaleDateString(getLocale(), { weekday: style });
+}

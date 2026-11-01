@@ -3,11 +3,11 @@
 import { addDays, atTime, parseTime, startOfDay, minutesToTime } from './dates.js';
 
 export const FREQUENCY_OPTIONS = [
-  { minutes: 30, label: 'Every 30 minutes' },
-  { minutes: 60, label: 'Every 1 hour' },
-  { minutes: 120, label: 'Every 2 hours' },
-  { minutes: 180, label: 'Every 3 hours' },
-  { minutes: 240, label: 'Every 4 hours' },
+  { minutes: 30, label: 'Every 30 minutes', short: '30 minutes' },
+  { minutes: 60, label: 'Every 1 hour', short: '1 hour' },
+  { minutes: 120, label: 'Every 2 hours', short: '2 hours' },
+  { minutes: 180, label: 'Every 3 hours', short: '3 hours' },
+  { minutes: 240, label: 'Every 4 hours', short: '4 hours' },
 ];
 
 export function defaultReminderSettings() {

@@ -60,6 +60,7 @@ The browser tests save screenshots to `tests/e2e/screenshots/`.
 | Shareable gratitude cards (3 styles, 1080×1350) via the phone's share menu, or saved as an image | ✅ Works |
 | Gratitude challenges (7, 21, 30 days); missed days never reset progress | ✅ Works |
 | WordPress plugin with `[gladmoment_landing]` and `[gladmoment_button]` shortcodes | ✅ Works |
+| English and French: follows the phone's language automatically, with a choice on the welcome screen and in Settings → Language; voice input, dates, themes, privacy page and landing page all translated | ✅ Works |
 | Save a backup (JSON) or download as a spreadsheet (CSV), restore a backup, delete all history, erase everything | ✅ Works |
 | Offline support through the service worker | ✅ Works |
 
@@ -99,6 +100,14 @@ sw.js                 notificationclick → focus or open the app on the entry s
 2. **Web Push:** needs a small server that stores each user's push subscription and reminder schedule and sends pushes on time. `sw.js` already handles `push` events. Note that this means reminder times (not journal content) would be stored on a server, and that should be disclosed.
 
 ---
+
+## Languages
+
+All text is English in the code and translated with `t('English text')` (see `js/i18n.js`).
+French lives in `tools/fr-ui.mjs` (screens) and `tools/fr-content.mjs` (prompts, word ideas,
+challenges and so on, in the same order as the English). Run `node tools/build-fr.mjs` to rebuild
+`js/i18n/fr.js`; it stops with a list if anything is untranslated. `npm test` runs it too.
+On WordPress, `[gladmoment_landing lang="fr"]` shows the French landing page.
 
 ## Privacy
 

@@ -2,6 +2,7 @@
 import { createStore } from './store.js';
 import { ReminderEngine, notificationSupport } from './notifications.js';
 import { icons, esc, toast } from './ui.js';
+import { t, setLanguage, detectLanguage } from './i18n.js';
 import * as home from './views/home.js';
 import * as journal from './views/journal.js';
 import * as insights from './views/insights.js';
@@ -44,6 +45,7 @@ export function navigate(to) {
 // ---------- theme / appearance ----------
 const media = matchMedia('(prefers-color-scheme: dark)');
 function applyAppearance() {
+  setLanguage(detectLanguage(store.state.user.preferences.language));
   const p = store.state.user.preferences;
   const root = document.documentElement;
   const dark = p.theme === 'dark' || (p.theme === 'system' && media.matches);
@@ -57,10 +59,13 @@ media.addEventListener?.('change', applyAppearance);
 // ---------- rendering ----------
 function renderNav(active) {
   nav.hidden = active === 'onboarding';
+  nav.setAttribute('aria-label', t('Main'));
   nav.innerHTML = `<ul>${TABS.map(
-    (t) => `<li><a href="#/${t.id}" class="tab ${t.id === active ? 'is-active' : ''}" ${t.id === active ? 'aria-current="page"' : ''}>
-        ${t.id === 'favourites' && active === 'favourites' ? icons.heartFilled : t.icon}<span>${t.label}</span></a></li>`
+    (tab) => `<li><a href="#/${tab.id}" class="tab ${tab.id === active ? 'is-active' : ''}" ${tab.id === active ? 'aria-current="page"' : ''}>
+        ${tab.id === 'favourites' && active === 'favourites' ? icons.heartFilled : tab.icon}<span>${t(tab.label)}</span></a></li>`
   ).join('')}</ul>`;
+  const skip = document.querySelector('.skip-link');
+  if (skip) skip.textContent = t('Skip to main content');
 }
 
 function captureFocus() {
@@ -121,8 +126,8 @@ function render({ scrollTop = false, routeChange = false } = {}) {
 function renderStorageWarning() {
   const el = document.getElementById('storage-warning');
   const msg = !store.persistent
-    ? 'Your browser is not allowing this app to save data (for example in a private window). Entries will be lost when you close the app.'
-    : store.warning;
+    ? t('Your browser is not allowing this app to save data (for example in a private window). Entries will be lost when you close the app.')
+    : store.warning && t(store.warning);
   el.hidden = !msg;
   el.textContent = msg || '';
 }
@@ -141,14 +146,14 @@ const banner = document.getElementById('reminder-banner');
 function showReminderBanner() {
   const quiet = Boolean(store.state.reminderSettings.quiet);
   banner.innerHTML = `<div class="reminder-banner-card" role="alertdialog" aria-labelledby="rb-title" aria-describedby="rb-body">
-      <p id="rb-title" class="rb-title">${quiet ? 'A quiet gratitude moment 📳' : 'A little gratitude moment 💛'}</p>
+      <p id="rb-title" class="rb-title">${quiet ? t('A quiet gratitude moment 📳') : t('A little gratitude moment 💛')}</p>
       <p id="rb-body" class="rb-body">${quiet
-        ? 'No need to type. Pause, think of one thing you’re grateful for, and say thank you silently in your heart.'
-        : 'Take a few seconds. What is one thing you’re grateful for right now?'}</p>
+        ? t('No need to type. Pause, think of one thing you’re grateful for, and say thank you silently in your heart.')
+        : t('Take a few seconds. What is one thing you’re grateful for right now?')}</p>
       <div class="rb-actions">
-        ${quiet ? '<button type="button" class="btn btn-primary" data-rb="heart">🤍 I said it in my heart</button>' : ''}
-        <button type="button" class="btn ${quiet ? 'btn-ghost-light' : 'btn-primary'}" data-rb="write">Write it now</button>
-        <button type="button" class="btn btn-ghost-light" data-rb="dismiss">Not now</button>
+        ${quiet ? `<button type="button" class="btn btn-primary" data-rb="heart">🤍 ${t('I said it in my heart')}</button>` : ''}
+        <button type="button" class="btn ${quiet ? 'btn-ghost-light' : 'btn-primary'}" data-rb="write">${t('Write it now')}</button>
+        <button type="button" class="btn btn-ghost-light" data-rb="dismiss">${t('Not now')}</button>
       </div>
     </div>`;
   banner.hidden = false;
@@ -161,8 +166,8 @@ banner.addEventListener('click', (ev) => {
   banner.innerHTML = '';
   if (b.dataset.rb === 'write') navigate('#/home?focus=1');
   if (b.dataset.rb === 'heart') {
-    store.addEntry({ text: 'Gave thanks silently in my heart', source: 'heart', inferTheme: false });
-    toast('A quiet thank-you, counted. 🤍');
+    store.addEntry({ text: t('Gave thanks silently in my heart'), source: 'heart', inferTheme: false });
+    toast(t('A quiet thank-you, counted. 🤍'));
   }
 });
 
@@ -213,6 +218,6 @@ lastSnapshot = JSON.stringify(store.state.reminderSettings);
 engine.start();
 render({ routeChange: true });
 
-if (store.warning) toast(store.warning, { duration: 9000 });
+if (store.warning) toast(t(store.warning), { duration: 9000 });
 
 export { store, engine, esc };

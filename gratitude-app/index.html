@@ -21,6 +21,8 @@
       var dark = p.theme === 'dark' || ((!p.theme || p.theme === 'system') && matchMedia('(prefers-color-scheme: dark)').matches);
       document.documentElement.dataset.theme = dark ? 'dark' : 'light';
       document.documentElement.dataset.textSize = p.textSize || 'normal';
+      var navFr = String((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase().indexOf('fr') === 0;
+      if (p.language === 'fr' || ((!p.language || p.language === 'auto') && navFr)) document.documentElement.lang = 'fr';
     } catch (e) {}
   </script>
 </head>

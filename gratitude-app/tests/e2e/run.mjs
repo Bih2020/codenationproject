@@ -23,8 +23,8 @@ let passed = 0;
 let failed = 0;
 const results = [];
 
-async function newPage({ permissions = [], speech = null, dark = false, viewport = { width: 390, height: 844 }, clock = null } = {}) {
-  const context = await browser.newContext({ viewport, permissions, colorScheme: dark ? 'dark' : 'light', locale: 'en-GB', deviceScaleFactor: 1 });
+async function newPage({ permissions = [], speech = null, dark = false, viewport = { width: 390, height: 844 }, clock = null, locale = 'en-GB' } = {}) {
+  const context = await browser.newContext({ viewport, permissions, colorScheme: dark ? 'dark' : 'light', locale, deviceScaleFactor: 1 });
   const page = await context.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -70,7 +70,7 @@ async function onboard(page, name = 'Sarah') {
 async function saveEntry(page, text) {
   await page.fill('#gratitude-text', text);
   await page.click('#save-btn');
-  await page.waitForFunction(() => document.querySelector('#save-ack')?.textContent.includes('Saved') || document.querySelector('#save-ack')?.textContent.includes('saved'));
+  await page.waitForFunction(() => /saved|enregistr/i.test(document.querySelector('#save-ack')?.textContent || ''));
 }
 
 async function t(name, fn) {
@@ -450,6 +450,72 @@ await t('share card from an entry, and the gratitude pause', async () => {
   assert.deepEqual(page.errors, []);
 });
 
+await t('French: automatic on a French phone, every screen translated, switch language', async () => {
+  const { allKeys } = await import('../../tools/i18n-keys.mjs');
+  const FR = (await import('../../js/i18n/fr.js')).default;
+  // English phrases that differ in French: none of these should appear on French screens.
+  const english = (await allKeys()).keys.filter((k) => k.length >= 14 && !/[{}]/.test(k) && FR[k] && FR[k].replace(/\u00a0/g, ' ') !== k);
+  const page = await newPage({ locale: 'fr-FR', clock: new Date(2026, 10, 2, 10, 0) });
+  await page.goto(URL_);
+  assert.equal(await page.getAttribute('html', 'lang'), 'fr');
+  assert.match(await page.textContent('.ob-title'), /Bienvenue/);
+  for (let i = 0; i < 4; i++) await page.click('#ob-next');
+  await page.fill('#ob-name', 'Mireille');
+  await page.click('#ob-next');
+  assert.match(await page.textContent('.ob-title'), /Votre chemin de gratitude commence, Mireille/);
+  await page.click('#ob-next');
+  await page.waitForSelector('#gratitude-text');
+  assert.match(await page.textContent('.greeting'), /Bonjour, Mireille/);
+  assert.match(await page.textContent('#compose-title'), /Qu’est-ce qui vous remplit de gratitude/);
+  await page.selectOption('#entry-theme', 'money');
+  await page.click('[data-word="Le jour de paie"]');
+  assert.equal(await page.inputValue('#gratitude-text'), 'Merci pour le jour de paie');
+  await page.click('#save-btn');
+  await page.waitForFunction(() => /enregistr/i.test(document.getElementById('save-ack')?.textContent || ''));
+  await page.click('#heart-btn');
+  await page.evaluate(() => window.__gratitude.store.startChallenge('seven'));
+  await page.evaluate(() => window.__gratitude.store.saveReflection({ items: ['ma famille', 'le soleil', ''], reflection: 'Une belle journée' }));
+  await page.waitForTimeout(400); await page.screenshot({ path: `${shots}home-fr.png`, fullPage: true });
+  const leaks = [];
+  for (const r of ['home', 'journal', 'insights', 'week', 'favourites', 'settings', 'reflection', 'challenges']) {
+    await page.goto(`${URL_}#/${r}`);
+    await page.waitForTimeout(150);
+    const text = (await page.evaluate(() => document.body.innerText)).replace(/\u00a0/g, ' ');
+    for (const e of english) if (text.includes(e)) leaks.push(`${r}: ${e}`);
+  }
+  assert.deepEqual(leaks, []);
+  // Dialogs and the pause screen
+  await page.goto(`${URL_}#/home`);
+  await page.click('#bell-toggle');
+  assert.match(await page.textContent('#dialog'), /Vibreur seulement/);
+  await page.keyboard.press('Escape');
+  await page.click('#open-pause');
+  assert.match(await page.textContent('.pause-overlay'), /Une pause gratitude d’une minute/);
+  await page.click('#pause-close');
+  // Switch to English in Settings, then back to French
+  await page.goto(`${URL_}#/settings`);
+  await page.click('label[for="language-en"]');
+  assert.equal(await page.getAttribute('html', 'lang'), 'en-GB');
+  assert.match(await page.textContent('#h-reminders'), /Reminder settings/);
+  await page.click('label[for="language-fr"]');
+  assert.match(await page.textContent('#h-reminders'), /Réglages des rappels/);
+  await page.reload();
+  await page.waitForSelector('#h-reminders');
+  assert.match(await page.textContent('#h-reminders'), /Réglages des rappels/);
+  await page.waitForTimeout(400); await page.screenshot({ path: `${shots}settings-fr.png`, fullPage: true });
+  assert.deepEqual(page.errors, []);
+});
+
+await t('language choice on the English welcome screen', async () => {
+  const page = await newPage();
+  await page.goto(URL_);
+  assert.match(await page.textContent('.ob-title'), /Welcome/);
+  await page.click('[data-lang="fr"]');
+  assert.match(await page.textContent('.ob-title'), /Bienvenue/);
+  await page.click('[data-lang="en"]');
+  assert.match(await page.textContent('.ob-title'), /Welcome/);
+});
+
 await t('dark mode and theme switching', async () => {
   const page = await newPage({ dark: true });
   await onboard(page);
@@ -463,15 +529,15 @@ await t('dark mode and theme switching', async () => {
 });
 
 await t('no horizontal overflow on phone, tablet and desktop', async () => {
-  for (const viewport of [{ width: 320, height: 640 }, { width: 390, height: 844 }, { width: 820, height: 1180 }, { width: 1366, height: 900 }]) {
-    const page = await newPage({ viewport });
+  for (const [viewport, locale] of [[{ width: 320, height: 640 }, 'en-GB'], [{ width: 320, height: 640 }, 'fr-FR'], [{ width: 390, height: 844 }, 'fr-FR'], [{ width: 390, height: 844 }, 'en-GB'], [{ width: 820, height: 1180 }, 'en-GB'], [{ width: 1366, height: 900 }, 'en-GB']]) {
+    const page = await newPage({ viewport, locale });
     await onboard(page);
     await saveEntry(page, 'a very long gratitude '.repeat(20));
-    for (const r of ['home', 'journal', 'insights', 'week', 'favourites', 'settings', 'reflection']) {
+    for (const r of ['home', 'journal', 'insights', 'week', 'favourites', 'settings', 'reflection', 'challenges']) {
       await page.goto(`${URL_}#/${r}`);
       await page.waitForTimeout(80);
       const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-      assert.ok(overflow <= 0, `${r} overflows by ${overflow}px at ${viewport.width}px`);
+      assert.ok(overflow <= 0, `${r} overflows by ${overflow}px at ${viewport.width}px (${locale})`);
     }
     if (viewport.width === 1366) {
       await page.goto(`${URL_}#/home`);

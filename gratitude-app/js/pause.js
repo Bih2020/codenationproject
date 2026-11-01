@@ -3,6 +3,7 @@
 import { BRAND } from './config.js';
 import { startSoundscape } from './sounds.js';
 import { esc } from './ui.js';
+import { t } from './i18n.js';
 
 const STEPS = [
   'Breathe in slowly…',
@@ -20,6 +21,8 @@ const DURATION = 60;
 /**
  * @param {{ onWrite?: () => void }} opts
  */
+export const PAUSE_STEPS = STEPS;
+
 export function openPause({ onWrite } = {}) {
   const host = document.createElement('div');
   host.className = 'pause-overlay';
@@ -28,21 +31,21 @@ export function openPause({ onWrite } = {}) {
   host.setAttribute('aria-labelledby', 'pause-title');
   host.innerHTML = `
     <div class="pause-inner">
-      <h2 id="pause-title" class="pause-title">A 1-minute gratitude pause</h2>
+      <h2 id="pause-title" class="pause-title">${t('A 1-minute gratitude pause')}</h2>
       <div class="breath" aria-hidden="true"><span class="breath-ring"></span><span class="breath-core"></span></div>
-      <p class="pause-step" aria-live="polite" id="pause-step">${esc(STEPS[0])}</p>
+      <p class="pause-step" aria-live="polite" id="pause-step">${esc(t(STEPS[0]))}</p>
       <p class="pause-time" id="pause-time" aria-hidden="true">1:00</p>
       <div class="pause-actions">
-        <button type="button" class="btn btn-ghost-light" id="pause-sound" aria-pressed="true">🔈 Sound on</button>
-        <button type="button" class="btn btn-ghost-light" id="pause-close">End pause</button>
+        <button type="button" class="btn btn-ghost-light" id="pause-sound" aria-pressed="true">🔈 ${t('Sound on')}</button>
+        <button type="button" class="btn btn-ghost-light" id="pause-close">${t('End pause')}</button>
       </div>
       <div class="pause-done" id="pause-done" hidden>
-        <p class="pause-step">Lovely. Would you like to write it down?</p>
+        <p class="pause-step">${t('Lovely. Would you like to write it down?')}</p>
         <div class="pause-actions">
-          <button type="button" class="btn btn-light" id="pause-write">Write my gratitude</button>
-          <button type="button" class="btn btn-ghost-light" id="pause-finish">Not now</button>
+          <button type="button" class="btn btn-light" id="pause-write">${t('Write my gratitude')}</button>
+          <button type="button" class="btn btn-ghost-light" id="pause-finish">${t('Not now')}</button>
         </div>
-        <a class="pause-music" href="${esc(BRAND.musicUrl)}" target="_blank" rel="noopener">🎵 Enjoyed the calm? Explore more ${esc(BRAND.siteName)} music</a>
+        <a class="pause-music" href="${esc(BRAND.musicUrl)}" target="_blank" rel="noopener">🎵 ${esc(t('Enjoyed the calm? Explore more {site} music', { site: BRAND.siteName }))}</a>
       </div>
     </div>`;
   document.body.appendChild(host);
@@ -62,7 +65,7 @@ export function openPause({ onWrite } = {}) {
     const nextStep = Math.min(STEPS.length - 1, Math.floor(((DURATION - left) / DURATION) * STEPS.length));
     if (nextStep !== step) {
       step = nextStep;
-      stepEl.textContent = STEPS[step];
+      stepEl.textContent = t(STEPS[step]);
     }
     if (left <= 0) finish();
   }, 1000);
@@ -111,7 +114,7 @@ export function openPause({ onWrite } = {}) {
   host.querySelector('#pause-sound').addEventListener('click', (ev) => {
     soundOn = !soundOn;
     ev.currentTarget.setAttribute('aria-pressed', String(soundOn));
-    ev.currentTarget.textContent = soundOn ? '🔈 Sound on' : '🔇 Sound off';
+    ev.currentTarget.textContent = soundOn ? `🔈 ${t('Sound on')}` : `🔇 ${t('Sound off')}`;
     if (soundOn) sound = startSoundscape({ trackUrl: BRAND.pauseTrackUrl });
     else {
       sound?.stop();

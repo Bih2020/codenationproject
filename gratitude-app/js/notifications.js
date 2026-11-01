@@ -11,6 +11,7 @@
 //                    tick, and keeps native schedules in sync with settings.
 import { remindersBetween, upcomingReminders } from './schedule.js';
 import { playBell } from './sounds.js';
+import { t } from './i18n.js';
 
 export const REMINDER_TITLE = 'A little gratitude moment 💛';
 export const REMINDER_BODY = "Take a few seconds. What is one thing you're grateful for right now?";
@@ -56,7 +57,7 @@ export async function showWebNotification({ sound = true, vibration = true, quie
     vibration = true;
   }
   const options = {
-    body: quiet ? QUIET_BODY : REMINDER_BODY,
+    body: t(quiet ? QUIET_BODY : REMINDER_BODY),
     icon: './icons/icon-192.png',
     badge: './icons/icon-192.png',
     tag: 'gratitude-reminder',
@@ -68,12 +69,12 @@ export async function showWebNotification({ sound = true, vibration = true, quie
   try {
     const reg = await navigator.serviceWorker?.getRegistration?.();
     if (reg) {
-      await reg.showNotification(REMINDER_TITLE, options);
+      await reg.showNotification(t(REMINDER_TITLE), options);
       return true;
     }
   } catch { /* fall through to page notification */ }
   try {
-    const n = new Notification(REMINDER_TITLE, options);
+    const n = new Notification(t(REMINDER_TITLE), options);
     n.onclick = () => {
       globalThis.focus?.();
       location.hash = '#/home?focus=1';
@@ -97,8 +98,8 @@ export async function syncNativeSchedule(settings, now = new Date()) {
     await ln.schedule({
       notifications: times.map((at, i) => ({
         id: 1000 + i,
-        title: REMINDER_TITLE,
-        body: settings.quiet ? QUIET_BODY : REMINDER_BODY,
+        title: t(REMINDER_TITLE),
+        body: t(settings.quiet ? QUIET_BODY : REMINDER_BODY),
         schedule: { at, allowWhileIdle: true },
         sound: settings.sound && !settings.quiet ? undefined : null,
         extra: { url: OPEN_URL },

@@ -24,6 +24,7 @@ export function defaultState(now = new Date()) {
       createdAt: new Date(now).toISOString(),
       onboarded: false,
       preferences: {
+        language: 'auto', // 'auto' | 'en' | 'fr'
         theme: 'system', // 'system' | 'light' | 'dark'
         textSize: 'normal', // 'normal' | 'large' | 'larger'
         reduceMotion: false,

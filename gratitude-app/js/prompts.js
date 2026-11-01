@@ -1,4 +1,6 @@
 // Gratitude categories, the built-in prompt library, and keyword-based theme inference.
+// Text here is English; it is translated for display with t() (see js/i18n/fr.js).
+import { t } from './i18n.js';
 
 export const CATEGORIES = {
   family: { label: 'Family', emoji: '❤️' },
@@ -9,7 +11,7 @@ export const CATEGORIES = {
   growth: { label: 'Personal growth', emoji: '🌱' },
   nature: { label: 'Nature', emoji: '🌿' },
   food: { label: 'Food & drink', chip: 'Food', emoji: '🍲' },
-  home: { label: 'Home', chip: 'My home', emoji: '🏠' },
+  home: { label: 'Home & comfort', chip: 'My home', emoji: '🏠' },
   relationships: { label: 'Relationships', emoji: '💞' },
   achievements: { label: 'Achievements', emoji: '🏅' },
   opportunities: { label: 'Opportunities', emoji: '🚪' },
@@ -26,8 +28,12 @@ export const QUICK_CHIPS = ['family', 'home', 'everyday', 'food', 'friendship', 
 
 export function categoryLabel(id) {
   const c = CATEGORIES[id];
-  return c ? `${c.emoji} ${c.label}` : '';
+  return c ? `${c.emoji} ${t(c.label)}` : '';
 }
+
+/** Translated theme name, and the shorter name used on quick-idea chips. */
+export const categoryName = (id) => (CATEGORIES[id] ? t(CATEGORIES[id].label) : '');
+export const chipName = (id) => (CATEGORIES[id] ? t(CATEGORIES[id].chip || CATEGORIES[id].label) : '');
 
 const LIBRARY = {
   family: [
@@ -299,8 +305,34 @@ const KEYWORDS = {
 };
 
 /** Best-guess theme from free text (used only when the user didn't pick one). */
+const KEYWORDS_FR = {
+  family: ['famille', 'maman', 'mère', 'papa', 'père', 'parents', 'sœur', 'soeur', 'frère', 'fils', 'fille', 'enfants', 'enfant', 'bébé', 'grand-mère', 'grand-père', 'mamie', 'papi', 'tante', 'oncle', 'cousin', 'cousine', 'neveu', 'nièce'],
+  friendship: ['ami', 'amie', 'amis', 'amies', 'copain', 'copine', 'amitié'],
+  health: ['santé', 'corps', 'dormi', 'sommeil', 'reposé', 'reposée', 'énergie', 'marche', 'sport', 'respirer', 'guéri', 'guérie', 'médecin', 'infirmière', 'bien-être', 'calme'],
+  work: ['travail', 'boulot', 'collègue', 'collègues', 'patron', 'bureau', 'réunion', 'projet', 'client', 'équipe', 'carrière'],
+  learning: ['appris', 'apprendre', 'cours', 'leçon', 'professeur', 'école', 'université', 'étudier', 'livre', 'lu', 'examen', 'devoir', 'mentor'],
+  growth: ['grandi', 'confiance', 'courage', 'courageux', 'courageuse', 'patience', 'fier de moi', 'fière de moi', 'habitude'],
+  nature: ['nature', 'soleil', 'coucher de soleil', 'pluie', 'ciel', 'arbre', 'arbres', 'fleur', 'fleurs', 'jardin', 'parc', 'mer', 'plage', 'oiseau', 'oiseaux', 'air frais', 'forêt', 'montagne', 'chien', 'chat'],
+  food: ['repas', 'petit-déjeuner', 'déjeuner', 'dîner', 'thé', 'café', 'gâteau', 'cuisiné', 'cuisine', 'soupe', 'fruit', 'fruits', 'chocolat', 'délicieux', 'manger', 'pain', 'plat'],
+  home: ['maison', 'appartement', 'lit', 'chambre', 'cuisine', 'canapé', 'douche', 'bain', 'chauffage', 'toit', 'chez moi'],
+  relationships: ['mari', 'femme', 'époux', 'épouse', 'chéri', 'chérie', 'amour', 'aimé', 'aimée', 'câlin', 'fiancé', 'fiancée'],
+  achievements: ['réussi', 'réussite', 'terminé', 'fini', 'gagné', 'objectif', 'promotion', 'succès', 'accompli', 'fier', 'fière'],
+  opportunities: ['opportunité', 'chance', 'offre', 'entretien', 'nouveau travail', 'voyage', 'liberté', 'invité', 'invitée', 'invitation'],
+  challenges: ['difficile', 'dur', 'épreuve', 'défi', 'surmonté', 'traversé', 'malgré'],
+  memories: ['souvenir', 'souvenirs', 'enfance', 'autrefois', 'photo', 'nostalgie'],
+  community: ['communauté', 'voisin', 'voisins', 'voisine', 'église', 'mosquée', 'bénévole', 'quartier', 'bibliothèque', 'association'],
+  kindness: ['gentil', 'gentille', 'gentillesse', 'aidé', 'aidée', 'aide', 'généreux', 'généreuse', 'inconnu', 'inconnue', 'soutien', 'soutenu', 'soutenue'],
+  money: ['argent', 'payé', 'payer', 'paie', 'salaire', 'revenu', 'facture', 'factures', 'loyer', 'économies', 'épargne', 'prime', 'remboursement', 'budget', 'dette', 'provision'],
+  everyday: ['aujourd', 'sourire', 'rire', 'musique', 'chanson', 'silence', 'paix', 'moment', 'matin', 'petites choses'],
+};
+for (const [cat, words] of Object.entries(KEYWORDS_FR)) KEYWORDS[cat] = [...(KEYWORDS[cat] || []), ...words];
+
 export function inferCategory(text) {
-  const t = ` ${String(text).toLowerCase().replace(/['’]s\b/g, '').replace(/[^\p{L}\p{N}' ]+/gu, ' ')} `;
+  const t = ` ${String(text)
+    .toLowerCase()
+    .replace(/['’]s\b/g, '')
+    .replace(/\b(l|d|j|qu|m|t|s|c|n)['’]/g, ' ') // French elisions: l'eau, d'argent
+    .replace(/[^\p{L}\p{N}' ]+/gu, ' ')} `;
   let best = null;
   let bestScore = 0;
   for (const [cat, words] of Object.entries(KEYWORDS)) {
@@ -348,7 +380,7 @@ export function addIdea(text, idea) {
   // Lower-case the first letter so it reads as part of a sentence ("my mum", "a smile").
   const keep = idea.charAt(0).toLowerCase() + idea.slice(1);
   const current = String(text || '').trim();
-  if (!current) return `I'm grateful for ${keep}`;
+  if (!current) return t("I'm grateful for {idea}", { idea: keep });
   return `${current.replace(/[.,;\s]+$/, '')}, ${keep}`;
 }
 

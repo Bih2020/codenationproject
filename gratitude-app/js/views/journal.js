@@ -1,13 +1,14 @@
 // My Gratitude Journal: chronological entries grouped by day, with search,
 // category/date/favourite filters and month-calendar navigation.
 import { esc, icons, entryCard, bindEntryActions, categoryOptions, pageHeader } from '../ui.js';
-import { dayKey, parseDayKey, relativeDayLabel, startOfDay, addDays, WEEKDAYS_SHORT } from '../dates.js';
+import { dayKey, parseDayKey, relativeDayLabel, startOfDay, addDays, weekdayName } from '../dates.js';
 import { MOODS } from '../stats.js';
+import { t, tn, getLocale } from '../i18n.js';
 
 const filters = { q: '', category: '', mood: '', favouritesOnly: false, day: '', showCalendar: false, month: null };
 
 export function title() {
-  return 'My Gratitude Journal · Gladmoment';
+  return `${t('My Gratitude Journal')} · Gladmoment`;
 }
 
 export function enter(_ctx, params) {
@@ -59,21 +60,21 @@ function calendarHtml(entries) {
     const date = new Date(m.getFullYear(), m.getMonth(), d);
     const k = dayKey(date);
     const n = counts[k] || 0;
-    const label = `${date.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}: ${n ? `${n} gratitude ${n === 1 ? 'moment' : 'moments'}` : 'no entries'}`;
+    const label = `${date.toLocaleDateString(getLocale(), { weekday: 'long', day: 'numeric', month: 'long' })}: ${n ? tn(n, '{n} gratitude moment', '{n} gratitude moments') : t('no entries')}`;
     cells.push(`<button type="button" class="cal-cell ${n ? 'has' : ''} ${k === today ? 'is-today' : ''} ${k === filters.day ? 'is-selected' : ''}"
       data-day="${k}" aria-label="${esc(label)}" aria-pressed="${k === filters.day}" ${n ? '' : 'data-empty="true"'}>
       <span>${d}</span>${n ? `<span class="cal-dot" aria-hidden="true">${n > 1 ? n : ''}</span>` : ''}</button>`);
   }
-  const monthLabel = m.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const monthLabel = m.toLocaleDateString(getLocale(), { month: 'long', year: 'numeric' });
   const isCurrentMonth = m.getFullYear() === new Date().getFullYear() && m.getMonth() === new Date().getMonth();
   return `<div class="calendar card" id="calendar">
     <div class="cal-head">
-      <button type="button" class="icon-btn" id="cal-prev" aria-label="Previous month">${icons.left}</button>
+      <button type="button" class="icon-btn" id="cal-prev" aria-label="${t('Previous month')}">${icons.left}</button>
       <h2 class="cal-title" aria-live="polite">${esc(monthLabel)}</h2>
-      <button type="button" class="icon-btn" id="cal-next" aria-label="Next month" ${isCurrentMonth ? 'disabled' : ''}>${icons.right}</button>
+      <button type="button" class="icon-btn" id="cal-next" aria-label="${t('Next month')}" ${isCurrentMonth ? 'disabled' : ''}>${icons.right}</button>
     </div>
-    <div class="cal-grid" role="group" aria-label="Days in ${esc(monthLabel)}">
-      ${[1, 2, 3, 4, 5, 6, 0].map((d) => `<span class="cal-dow" aria-hidden="true">${WEEKDAYS_SHORT[d].slice(0, 2)}</span>`).join('')}
+    <div class="cal-grid" role="group" aria-label="${esc(t('Days in {month}', { month: monthLabel }))}">
+      ${[1, 2, 3, 4, 5, 6, 0].map((d) => `<span class="cal-dow" aria-hidden="true">${esc(weekdayName(d, 'short').slice(0, 2))}</span>`).join('')}
       ${cells.join('')}
     </div>
   </div>`;
@@ -82,9 +83,9 @@ function calendarHtml(entries) {
 function reflectionHtml(r) {
   if (!r || (!r.reflection && !r.items?.some(Boolean))) return '';
   return `<div class="reflection-card">
-    <p class="reflection-label"><span aria-hidden="true">🌙</span> Daily reflection</p>
-    ${r.reflection ? `<p class="reflection-text"><span class="muted">What made today meaningful:</span> ${esc(r.reflection)}</p>` : ''}
-    <a class="link small" href="#/reflection?date=${esc(r.date)}">Edit reflection</a>
+    <p class="reflection-label"><span aria-hidden="true">🌙</span> ${t('Daily reflection')}</p>
+    ${r.reflection ? `<p class="reflection-text"><span class="muted">${t('What made today meaningful:')}</span> ${esc(r.reflection)}</p>` : ''}
+    <a class="link small" href="#/reflection?date=${esc(r.date)}">${t('Edit reflection')}</a>
   </div>`;
 }
 
@@ -94,16 +95,16 @@ function listHtml(ctx) {
   const anyFilter = filters.q || filters.category || filters.mood || filters.favouritesOnly || filters.day;
   if (!state.entries.length) {
     return `<div class="empty card"><p class="empty-emoji" aria-hidden="true">📔</p>
-      <p>Your journal is waiting for its first gratitude.</p><a href="#/home?focus=1" class="btn btn-primary">Write one now</a></div>`;
+      <p>${t('Your journal is waiting for its first gratitude.')}</p><a href="#/home?focus=1" class="btn btn-primary">${t('Write one now')}</a></div>`;
   }
   if (!results.length) {
     return `<div class="empty card"><p class="empty-emoji" aria-hidden="true">🔍</p>
-      <p>No gratitude moments match ${filters.day ? 'this day and ' : ''}these filters.</p>
-      <button type="button" class="btn btn-soft" data-clear-filters>Clear filters</button></div>`;
+      <p>${filters.day ? t('No gratitude moments match this day and these filters.') : t('No gratitude moments match these filters.')}</p>
+      <button type="button" class="btn btn-soft" data-clear-filters>${t('Clear filters')}</button></div>`;
   }
   const groups = groupByDay(results);
   const now = new Date();
-  return `<p class="result-count" role="status">${results.length} ${results.length === 1 ? 'moment' : 'moments'}${anyFilter ? ' found' : ''}</p>
+  return `<p class="result-count" role="status">${anyFilter ? tn(results.length, '{n} moment found', '{n} moments found') : tn(results.length, '{n} moment', '{n} moments')}</p>
     ${[...groups.entries()]
       .map(([k, list]) => {
         const r = ctx.store.reflectionFor(k);
@@ -118,38 +119,38 @@ function listHtml(ctx) {
 
 export function render(ctx) {
   const total = ctx.store.state.entries.length;
-  return `${pageHeader('My Gratitude Journal', total ? `${total} gratitude ${total === 1 ? 'moment' : 'moments'} saved` : 'Every moment you save lives here')}
+  return `${pageHeader(t('My Gratitude Journal'), total ? tn(total, '{n} gratitude moment saved', '{n} gratitude moments saved') : t('Every moment you save lives here'))}
   <div class="page">
     <div class="journal-tools card">
       <div class="search-wrap">
-        <label for="journal-search" class="sr-only">Search your journal</label>
+        <label for="journal-search" class="sr-only">${t('Search your journal')}</label>
         <span class="search-icon" aria-hidden="true">${icons.search}</span>
-        <input type="search" id="journal-search" class="input" placeholder="Search your gratitude…" value="${esc(filters.q)}" autocomplete="off">
+        <input type="search" id="journal-search" class="input" placeholder="${esc(t('Search your gratitude…'))}" value="${esc(filters.q)}" autocomplete="off">
       </div>
       <div class="filter-row">
         <div class="filter">
-          <label for="filter-cat" class="field-label small">Theme</label>
-          <select id="filter-cat" class="select">${categoryOptions(filters.category, { includeAuto: false }).replace(/^/, '<option value="">All themes</option>')}</select>
+          <label for="filter-cat" class="field-label small">${t('Theme')}</label>
+          <select id="filter-cat" class="select">${categoryOptions(filters.category, { includeAuto: false }).replace(/^/, `<option value="">${t('All themes')}</option>`)}</select>
         </div>
         <div class="filter">
-          <label for="filter-mood" class="field-label small">Mood</label>
-          <select id="filter-mood" class="select"><option value="">Any mood</option>${MOODS.map((m) => `<option value="${m.id}" ${filters.mood === m.id ? 'selected' : ''}>${m.emoji} ${m.label}</option>`).join('')}</select>
+          <label for="filter-mood" class="field-label small">${t('Mood')}</label>
+          <select id="filter-mood" class="select"><option value="">${t('Any mood')}</option>${MOODS.map((m) => `<option value="${m.id}" ${filters.mood === m.id ? 'selected' : ''}>${m.emoji} ${esc(t(m.label))}</option>`).join('')}</select>
         </div>
         <div class="filter">
-          <label for="filter-day" class="field-label small">Date</label>
+          <label for="filter-day" class="field-label small">${t('Date')}</label>
           <input type="date" id="filter-day" class="input" value="${esc(filters.day)}" max="${dayKey(new Date())}">
         </div>
       </div>
       <div class="row wrap">
-        <button type="button" class="toggle-pill" id="filter-fav" aria-pressed="${filters.favouritesOnly}">${filters.favouritesOnly ? icons.heartFilled : icons.heart} Favourites only</button>
-        <button type="button" class="toggle-pill" id="toggle-cal" aria-pressed="${filters.showCalendar}" aria-controls="calendar">${icons.calendar} Calendar</button>
-        <a class="toggle-pill" href="#/reflection">🌙 Daily reflection</a>
-        <button type="button" class="link-btn" data-clear-filters ${filters.q || filters.category || filters.mood || filters.favouritesOnly || filters.day ? '' : 'hidden'}>Clear filters</button>
+        <button type="button" class="toggle-pill" id="filter-fav" aria-pressed="${filters.favouritesOnly}">${filters.favouritesOnly ? icons.heartFilled : icons.heart} ${t('Favourites only')}</button>
+        <button type="button" class="toggle-pill" id="toggle-cal" aria-pressed="${filters.showCalendar}" aria-controls="calendar">${icons.calendar} ${t('Calendar')}</button>
+        <a class="toggle-pill" href="#/reflection">🌙 ${t('Daily reflection')}</a>
+        <button type="button" class="link-btn" data-clear-filters ${filters.q || filters.category || filters.mood || filters.favouritesOnly || filters.day ? '' : 'hidden'}>${t('Clear filters')}</button>
       </div>
       ${filters.day ? `<div class="day-nav">
-          <button type="button" class="icon-btn" id="day-prev" aria-label="Previous day">${icons.left}</button>
+          <button type="button" class="icon-btn" id="day-prev" aria-label="${t('Previous day')}">${icons.left}</button>
           <span>${esc(relativeDayLabel(filters.day))}</span>
-          <button type="button" class="icon-btn" id="day-next" aria-label="Next day" ${filters.day >= dayKey(new Date()) ? 'disabled' : ''}>${icons.right}</button>
+          <button type="button" class="icon-btn" id="day-next" aria-label="${t('Next day')}" ${filters.day >= dayKey(new Date()) ? 'disabled' : ''}>${icons.right}</button>
         </div>` : ''}
     </div>
     ${filters.showCalendar ? calendarHtml(ctx.store.state.entries) : ''}

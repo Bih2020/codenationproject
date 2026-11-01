@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Gladmoment
  * Description:       A gentle gratitude reminder and journal. Installs the Gladmoment app at yoursite.com/gladmoment/ and adds the [gladmoment_landing] and [gladmoment_button] shortcodes.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Gemrhythm
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GLADMOMENT_VERSION', '1.1.0' );
+define( 'GLADMOMENT_VERSION', '1.2.0' );
 define( 'GLADMOMENT_SLUG', 'gladmoment' );
 define( 'GLADMOMENT_SOURCE', __DIR__ . '/app' );
 define( 'GLADMOMENT_MARKER', '.gladmoment-plugin' );
@@ -141,6 +141,16 @@ add_action(
 	}
 );
 
+/** 'fr' or 'en': an explicit shortcode attribute wins, otherwise the WordPress site language. */
+function gladmoment_lang( $attr = '' ) {
+	$attr = strtolower( (string) $attr );
+	if ( 'fr' === $attr || 'en' === $attr ) {
+		return $attr;
+	}
+	$locale = function_exists( 'get_locale' ) ? get_locale() : 'en_GB';
+	return 0 === strpos( strtolower( $locale ), 'fr' ) ? 'fr' : 'en';
+}
+
 /** "Open Gladmoment" link on the Plugins screen. */
 add_filter(
 	'plugin_action_links_' . plugin_basename( __FILE__ ),
@@ -150,13 +160,15 @@ add_filter(
 	}
 );
 
-/** [gladmoment_button text="Try Gladmoment"] — a button linking to the app. */
+/** [gladmoment_button text="Try Gladmoment" lang="fr"] — a button linking to the app. */
 add_shortcode(
 	'gladmoment_button',
 	function ( $atts ) {
-		$atts = shortcode_atts( array( 'text' => 'Open Gladmoment, our free gratitude app' ), $atts, 'gladmoment_button' );
+		$atts  = shortcode_atts( array( 'text' => '', 'lang' => '' ), $atts, 'gladmoment_button' );
+		$lang  = gladmoment_lang( $atts['lang'] );
+		$text  = '' !== $atts['text'] ? $atts['text'] : ( 'fr' === $lang ? 'Ouvrir Gladmoment, notre application de gratitude gratuite' : 'Open Gladmoment, our free gratitude app' );
 		$style = 'display:inline-block;padding:14px 26px;border-radius:999px;background:linear-gradient(135deg,#5b34c4,#8a3ac0);color:#fff;font-weight:700;text-decoration:none;';
-		return '<a class="gladmoment-button" href="' . esc_url( gladmoment_url() ) . '" style="' . esc_attr( $style ) . '">💛 ' . esc_html( $atts['text'] ) . '</a>';
+		return '<a class="gladmoment-button" href="' . esc_url( gladmoment_url() ) . '" style="' . esc_attr( $style ) . '">💛 ' . esc_html( $text ) . '</a>';
 	}
 );
 
@@ -166,8 +178,68 @@ add_shortcode(
  */
 add_shortcode(
 	'gladmoment_landing',
-	function () {
-		$url = esc_url( gladmoment_url() );
+	function ( $atts ) {
+		$atts = shortcode_atts( array( 'lang' => '' ), $atts, 'gladmoment_landing' );
+		$fr   = 'fr' === gladmoment_lang( $atts['lang'] );
+		$url  = esc_url( gladmoment_url() );
+		$priv = esc_url( gladmoment_url() . ( $fr ? 'privacy-fr.html' : 'privacy.html' ) );
+		$s    = $fr ? array(
+			'aria'     => 'Gladmoment, application de gratitude',
+			'h'        => 'Faites une pause. Remarquez. Dites merci.',
+			'lead'     => 'Gladmoment est une application de gratitude gratuite de Gemrhythm. De doux rappels au fil de la journée vous aident à remarquer une bonne chose, en quelques secondes seulement.',
+			'open'     => '💛 Ouvrir Gladmoment, c’est gratuit',
+			'note'     => 'Sans inscription. Fonctionne sur téléphone, tablette et ordinateur.',
+			'why'      => 'Pourquoi vous allez l’aimer',
+			'f'        => array(
+				array( '🔔', 'Une douce cloche de gratitude', 'Des rappels toutes les quelques heures, aux moments que vous choisissez. Mode vibreur pour le travail ou l’école.' ),
+				array( '✍️', 'Écrire, dire ou toucher', 'Écrivez, dictez, ou touchez une idée toute prête. Dix secondes suffisent.' ),
+				array( '🎵', 'Une pause calme d’une minute', 'Respirez avec les sons apaisants de Gemrhythm, puis remarquez une bonne chose.' ),
+				array( '✨', 'Défis de 7, 21 et 30 jours', 'Un nouveau thème chaque jour : famille, nature, argent, souvenirs et plus encore.' ),
+				array( '🔥', 'Des séries sans pression', 'Suivez votre habitude avec bienveillance. Un jour manqué ? Aujourd’hui est une nouvelle occasion de commencer.' ),
+				array( '💌', 'Partagez une carte de gratitude', 'Transformez un moment en belle image pour WhatsApp ou Instagram.' ),
+			),
+			'install'  => 'Ajoutez-la à votre écran d’accueil',
+			'ios'      => '📱 iPhone (Safari)',
+			'ios1'     => 'Ouvrez <a href="' . $url . '">Gladmoment</a> dans Safari.',
+			'ios2'     => 'Touchez le bouton Partager (le carré avec une flèche).',
+			'ios3'     => 'Choisissez <strong>Sur l’écran d’accueil</strong>, puis <strong>Ajouter</strong>.',
+			'and'      => '🤖 Android (Chrome)',
+			'and1'     => 'Ouvrez <a href="' . $url . '">Gladmoment</a> dans Chrome.',
+			'and2'     => 'Touchez le menu ⋮ en haut à droite.',
+			'and3'     => 'Choisissez <strong>Installer l’application</strong> ou <strong>Ajouter à l’écran d’accueil</strong>.',
+			'privh'    => '🔒 Votre journal reste privé',
+			'privp'    => 'Vos gratitudes sont enregistrées uniquement sur votre propre appareil. Pas de compte, pas de pistage, pas de publicité. <a href="' . $priv . '">Lire la politique de confidentialité</a>.',
+			'cta'      => 'Commencer mon premier moment de gratitude',
+			'lang'     => 'fr',
+		) : array(
+			'aria'     => 'Gladmoment gratitude app',
+			'h'        => 'Pause. Notice. Give thanks.',
+			'lead'     => 'Gladmoment is a free gratitude app from Gemrhythm. Gentle reminders through your day help you notice one good thing, and it only takes a few seconds.',
+			'open'     => '💛 Open Gladmoment, it’s free',
+			'note'     => 'No sign-up. Works on any phone, tablet or computer.',
+			'why'      => 'Why you’ll love it',
+			'f'        => array(
+				array( '🔔', 'A gentle gratitude bell', 'Reminders every few hours, at the times you choose. Vibrate-only for work or school.' ),
+				array( '✍️', 'Write, say or tap', 'Type it, speak it, or tap a ready-made idea. Ten seconds is enough.' ),
+				array( '🎵', '1-minute calm pause', 'Breathe with soothing Gemrhythm sounds, then notice one good thing.' ),
+				array( '✨', '7, 21 &amp; 30-day challenges', 'A new theme each day: family, nature, money, memories and more.' ),
+				array( '🔥', 'Streaks without pressure', 'Track your habit kindly. Miss a day? Today is another chance to begin.' ),
+				array( '💌', 'Share a gratitude card', 'Turn a moment into a beautiful picture for WhatsApp or Instagram.' ),
+			),
+			'install'  => 'Add it to your home screen',
+			'ios'      => '📱 iPhone (Safari)',
+			'ios1'     => 'Open <a href="' . $url . '">Gladmoment</a> in Safari.',
+			'ios2'     => 'Tap the Share button (square with an arrow).',
+			'ios3'     => 'Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.',
+			'and'      => '🤖 Android (Chrome)',
+			'and1'     => 'Open <a href="' . $url . '">Gladmoment</a> in Chrome.',
+			'and2'     => 'Tap the ⋮ menu at the top right.',
+			'and3'     => 'Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.',
+			'privh'    => '🔒 Your journal stays private',
+			'privp'    => 'Your gratitude entries are saved only on your own device. There’s no account, no tracking and no adverts. <a href="' . $priv . '">Read the privacy policy</a>.',
+			'cta'      => 'Start your first glad moment',
+			'lang'     => 'en',
+		);
 		ob_start();
 		?>
 <style>
@@ -192,36 +264,33 @@ add_shortcode(
 .glm-privacy p{max-width:40em;margin:6px auto 0;color:var(--glm-muted)}
 .glm-cta{text-align:center;margin:36px 0 10px}
 </style>
-<section class="glm" aria-label="Gladmoment gratitude app">
+<section class="glm" lang="<?php echo esc_attr( $s['lang'] ); ?>" aria-label="<?php echo esc_attr( $s['aria'] ); ?>">
 	<div class="glm-hero">
-		<h2>Pause. Notice. Give thanks.</h2>
-		<p>Gladmoment is a free gratitude app from Gemrhythm. Gentle reminders through your day help you notice one good thing, and it only takes a few seconds.</p>
-		<a class="glm-btn" href="<?php echo $url; ?>">💛 Open Gladmoment, it’s free</a>
-		<p class="glm-note">No sign-up. Works on any phone, tablet or computer.</p>
+		<h2><?php echo esc_html( $s['h'] ); ?></h2>
+		<p><?php echo esc_html( $s['lead'] ); ?></p>
+		<a class="glm-btn" href="<?php echo $url; ?>"><?php echo esc_html( $s['open'] ); ?></a>
+		<p class="glm-note"><?php echo esc_html( $s['note'] ); ?></p>
 	</div>
 
-	<h3>Why you’ll love it</h3>
+	<h3><?php echo esc_html( $s['why'] ); ?></h3>
 	<div class="glm-grid">
-		<div class="glm-card"><div class="ic">🔔</div><h4>A gentle gratitude bell</h4><p>Reminders every few hours, at the times you choose. Vibrate-only for work or school.</p></div>
-		<div class="glm-card"><div class="ic">✍️</div><h4>Write, say or tap</h4><p>Type it, speak it, or tap a ready-made idea. Ten seconds is enough.</p></div>
-		<div class="glm-card"><div class="ic">🎵</div><h4>1-minute calm pause</h4><p>Breathe with soothing Gemrhythm sounds, then notice one good thing.</p></div>
-		<div class="glm-card"><div class="ic">✨</div><h4>7, 21 &amp; 30-day challenges</h4><p>A new theme each day: family, nature, money, memories and more.</p></div>
-		<div class="glm-card"><div class="ic">🔥</div><h4>Streaks without pressure</h4><p>Track your habit kindly. Miss a day? Today is another chance to begin.</p></div>
-		<div class="glm-card"><div class="ic">💌</div><h4>Share a gratitude card</h4><p>Turn a moment into a beautiful picture for WhatsApp or Instagram.</p></div>
+		<?php foreach ( $s['f'] as $f ) : ?>
+		<div class="glm-card"><div class="ic"><?php echo $f[0]; ?></div><h4><?php echo $f[1]; ?></h4><p><?php echo esc_html( $f[2] ); ?></p></div>
+		<?php endforeach; ?>
 	</div>
 
-	<h3>Add it to your home screen</h3>
+	<h3><?php echo esc_html( $s['install'] ); ?></h3>
 	<div class="glm-steps">
-		<div class="glm-card"><h4>📱 iPhone (Safari)</h4><ol><li>Open <a href="<?php echo $url; ?>">Gladmoment</a> in Safari.</li><li>Tap the Share button (square with an arrow).</li><li>Choose <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li></ol></div>
-		<div class="glm-card"><h4>🤖 Android (Chrome)</h4><ol><li>Open <a href="<?php echo $url; ?>">Gladmoment</a> in Chrome.</li><li>Tap the ⋮ menu at the top right.</li><li>Choose <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li></ol></div>
+		<div class="glm-card"><h4><?php echo esc_html( $s['ios'] ); ?></h4><ol><li><?php echo $s['ios1']; ?></li><li><?php echo esc_html( $s['ios2'] ); ?></li><li><?php echo $s['ios3']; ?></li></ol></div>
+		<div class="glm-card"><h4><?php echo esc_html( $s['and'] ); ?></h4><ol><li><?php echo $s['and1']; ?></li><li><?php echo esc_html( $s['and2'] ); ?></li><li><?php echo $s['and3']; ?></li></ol></div>
 	</div>
 
 	<div class="glm-privacy">
-		<strong>🔒 Your journal stays private</strong>
-		<p>Your gratitude entries are saved only on your own device. There’s no account, no tracking and no adverts. <a href="<?php echo esc_url( gladmoment_url() . 'privacy.html' ); ?>">Read the privacy policy</a>.</p>
+		<strong><?php echo esc_html( $s['privh'] ); ?></strong>
+		<p><?php echo $s['privp']; ?></p>
 	</div>
 
-	<div class="glm-cta"><a class="glm-btn alt" href="<?php echo $url; ?>">Start your first glad moment</a></div>
+	<div class="glm-cta"><a class="glm-btn alt" href="<?php echo $url; ?>"><?php echo esc_html( $s['cta'] ); ?></a></div>
 </section>
 		<?php
 		return ob_get_clean();

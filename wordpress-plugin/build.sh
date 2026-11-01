@@ -7,7 +7,7 @@ out="$here/../gladmoment-wordpress-plugin.zip"
 tmp="$(mktemp -d)"
 cp -r "$here/gladmoment" "$tmp/gladmoment"
 mkdir -p "$tmp/gladmoment/app"
-(cd "$app" && cp -r index.html privacy.html manifest.webmanifest sw.js .htaccess css js icons "$tmp/gladmoment/app/")
+(cd "$app" && cp -r index.html privacy.html privacy-fr.html manifest.webmanifest sw.js .htaccess css js icons "$tmp/gladmoment/app/")
 rm -f "$out"
 (cd "$tmp" && zip -qr "$out" gladmoment)
 rm -rf "$tmp"

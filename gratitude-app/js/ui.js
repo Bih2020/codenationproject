@@ -2,6 +2,7 @@
 import { categoryLabel, CATEGORIES } from './prompts.js';
 import { moodById, MOODS } from './stats.js';
 import { formatTime } from './dates.js';
+import { t, getLocale } from './i18n.js';
 import { drawCard, shareCard, CARD_STYLES } from './sharecard.js';
 
 export function esc(v) {
@@ -96,7 +97,7 @@ function openDialog(inner, { labelledBy = 'dialog-title', onClose } = {}) {
   return dlg;
 }
 
-export function confirmDialog({ title, body = '', confirmLabel = 'Confirm', cancelLabel = 'Cancel', danger = false }) {
+export function confirmDialog({ title, body = '', confirmLabel = t('Confirm'), cancelLabel = t('Cancel'), danger = false }) {
   return new Promise((resolve) => {
     const dlg = openDialog(
       `<form method="dialog" class="dialog-card">
@@ -124,15 +125,15 @@ export function bellModeDialog(current, { vibrationSupported = true } = {}) {
     let choice = null;
     const dlg = openDialog(
       `<form method="dialog" class="dialog-card" id="bell-form">
-        <h2 id="dialog-title">Gratitude bell</h2>
-        <fieldset class="bell-opts"><legend class="sr-only">Choose how reminders reach you</legend>
-          ${opt('ring', 'Sound', 'A soft chime and a notification.')}
-          ${opt('quiet', 'Vibrate only', `For work or school. No sound: just pause and give thanks silently in your heart.${vibrationSupported ? '' : ' (This device can’t vibrate, so reminders arrive silently.)'}`)}
-          ${opt('off', 'Off', 'No reminders until you turn the bell back on.')}
+        <h2 id="dialog-title">${t('Gratitude bell')}</h2>
+        <fieldset class="bell-opts"><legend class="sr-only">${t('Choose how reminders reach you')}</legend>
+          ${opt('ring', t('Sound'), t('A soft chime and a notification.'))}
+          ${opt('quiet', t('Vibrate only'), t('For work or school. No sound: just pause and give thanks silently in your heart.') + (vibrationSupported ? '' : ` ${t('(This device can’t vibrate, so reminders arrive silently.)')}`))}
+          ${opt('off', t('Off'), t('No reminders until you turn the bell back on.'))}
         </fieldset>
         <div class="dialog-actions">
-          <button value="cancel" class="btn btn-ghost" formnovalidate>Cancel</button>
-          <button value="save" class="btn btn-primary">Done</button>
+          <button value="cancel" class="btn btn-ghost" formnovalidate>${t('Cancel')}</button>
+          <button value="save" class="btn btn-primary">${t('Done')}</button>
         </div>
       </form>`,
       { onClose: (v) => resolve(v === 'save' ? choice : null) }
@@ -157,15 +158,15 @@ export function shareDialog({ text, date = new Date(), heading }) {
   const canvas = document.createElement('canvas');
   const dlg = openDialog(
     `<div class="dialog-card share-card-dialog">
-      <h2 id="dialog-title">Share as a card</h2>
-      <img class="card-preview" id="card-preview" alt="Preview of your gratitude card">
-      <div class="radio-grid three" role="radiogroup" aria-label="Card style">
-        ${CARD_STYLES.map((c, i) => `<label class="radio-pill" for="card-${c.id}"><input type="radio" name="card-style" id="card-${c.id}" value="${c.id}" ${i === 0 ? 'checked' : ''}><span>${esc(c.label)}</span></label>`).join('')}
+      <h2 id="dialog-title">${t('Share as a card')}</h2>
+      <img class="card-preview" id="card-preview" alt="${t('Preview of your gratitude card')}">
+      <div class="radio-grid three" role="radiogroup" aria-label="${t('Card style')}">
+        ${CARD_STYLES.map((c, i) => `<label class="radio-pill" for="card-${c.id}"><input type="radio" name="card-style" id="card-${c.id}" value="${c.id}" ${i === 0 ? 'checked' : ''}><span>${esc(t(c.label))}</span></label>`).join('')}
       </div>
-      <p class="muted small">Only this picture is shared, and only when you choose. Your journal stays private.</p>
+      <p class="muted small">${t('Only this picture is shared, and only when you choose. Your journal stays private.')}</p>
       <div class="dialog-actions">
-        <button type="button" class="btn btn-ghost" id="card-cancel">Close</button>
-        <button type="button" class="btn btn-primary" id="card-share">${icons.share} Share</button>
+        <button type="button" class="btn btn-ghost" id="card-cancel">${t('Close')}</button>
+        <button type="button" class="btn btn-primary" id="card-share">${icons.share} ${t('Share')}</button>
       </div>
     </div>`
   );
@@ -184,9 +185,9 @@ export function shareDialog({ text, date = new Date(), heading }) {
   dlg.querySelector('#card-cancel').addEventListener('click', () => dlg.close('cancel'));
   dlg.querySelector('#card-share').addEventListener('click', async () => {
     const result = await shareCard(canvas);
-    if (result === 'downloaded') toast('Card saved to your downloads. Share it from your photos or files.');
-    else if (result === 'shared') toast('Shared. Thank you for spreading a little gladness. 💛');
-    else if (result === 'failed') toast('The card could not be created on this device.');
+    if (result === 'downloaded') toast(t('Card saved to your downloads. Share it from your photos or files.'));
+    else if (result === 'shared') toast(t('Shared. Thank you for spreading a little gladness. 💛'));
+    else if (result === 'failed') toast(t('The card could not be created on this device.'));
     if (result === 'shared' || result === 'downloaded') dlg.close('done');
   });
   dlg.querySelector('#card-share').focus();
@@ -194,12 +195,12 @@ export function shareDialog({ text, date = new Date(), heading }) {
 }
 
 export function categoryOptions(selected, { includeAuto = true } = {}) {
-  return `${includeAuto ? `<option value="">No theme / let the app guess</option>` : ''}${Object.entries(CATEGORIES)
-    .map(([id, c]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${c.emoji} ${esc(c.label)}</option>`)
+  return `${includeAuto ? `<option value="">${t('No theme / let the app guess')}</option>` : ''}${Object.entries(CATEGORIES)
+    .map(([id, c]) => `<option value="${id}" ${id === selected ? 'selected' : ''}>${c.emoji} ${esc(t(c.label))}</option>`)
     .join('')}`;
 }
 
-export function moodPicker(name, selected, { legend = 'How are you feeling? (optional)' } = {}) {
+export function moodPicker(name, selected, { legend = t('How are you feeling? (optional)') } = {}) {
   return `<fieldset class="mood-picker">
     <legend>${esc(legend)}</legend>
     <div class="mood-options">
@@ -207,7 +208,7 @@ export function moodPicker(name, selected, { legend = 'How are you feeling? (opt
         (m) => `<label class="mood-option">
           <input type="radio" name="${name}" value="${m.id}" ${m.id === selected ? 'checked' : ''}>
           <span class="mood-face" aria-hidden="true">${m.emoji}</span>
-          <span class="mood-label">${esc(m.label)}</span>
+          <span class="mood-label">${esc(t(m.label))}</span>
         </label>`
       ).join('')}
     </div>
@@ -242,16 +243,16 @@ export function editEntryDialog(entry) {
   return new Promise((resolve) => {
     const dlg = openDialog(
       `<form method="dialog" class="dialog-card" id="edit-form">
-        <h2 id="dialog-title">Edit gratitude</h2>
-        <label class="field-label" for="edit-text">Your gratitude</label>
+        <h2 id="dialog-title">${t('Edit gratitude')}</h2>
+        <label class="field-label" for="edit-text">${t('Your gratitude')}</label>
         <textarea id="edit-text" class="textarea" rows="5" required>${esc(entry.text)}</textarea>
-        <label class="field-label" for="edit-cat">Theme</label>
+        <label class="field-label" for="edit-cat">${t('Theme')}</label>
         <select id="edit-cat" class="select">${categoryOptions(entry.categorySource === 'user' ? entry.category : '')}</select>
         ${moodPicker('edit-mood', entry.mood)}
-        <p class="form-error" id="edit-error" role="alert" hidden>Please write something before saving.</p>
+        <p class="form-error" id="edit-error" role="alert" hidden>${t('Please write something before saving.')}</p>
         <div class="dialog-actions">
-          <button value="cancel" class="btn btn-ghost" formnovalidate>Cancel</button>
-          <button value="save" class="btn btn-primary">Save changes</button>
+          <button value="cancel" class="btn btn-ghost" formnovalidate>${t('Cancel')}</button>
+          <button value="save" class="btn btn-primary">${t('Save changes')}</button>
         </div>
       </form>`,
       {
@@ -287,32 +288,32 @@ export function editEntryDialog(entry) {
 export function entryCard(e, { showDate = false, compact = false } = {}) {
   const mood = e.mood ? moodById(e.mood) : null;
   const when = new Date(e.createdAt);
-  const dateStr = showDate ? `${when.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} · ` : '';
+  const dateStr = showDate ? `${when.toLocaleDateString(getLocale(), { day: 'numeric', month: 'short', year: 'numeric' })} · ` : '';
   const meta = [
     e.category ? `<span class="tag">${esc(categoryLabel(e.category))}</span>` : '',
-    mood ? `<span class="tag tag-mood" title="Mood: ${esc(mood.label)}"><span aria-hidden="true">${mood.emoji}</span> ${esc(mood.label)}</span>` : '',
-    e.source === 'voice' ? '<span class="tag tag-soft">🎙 Spoken</span>' : '',
-    e.source === 'reflection' ? '<span class="tag tag-soft">🌙 Reflection</span>' : '',
-    e.source === 'heart' ? '<span class="tag tag-soft">🤍 In my heart</span>' : '',
+    mood ? `<span class="tag tag-mood" title="${t('Mood')}: ${esc(t(mood.label))}"><span aria-hidden="true">${mood.emoji}</span> ${esc(t(mood.label))}</span>` : '',
+    e.source === 'voice' ? `<span class="tag tag-soft">🎙 ${t('Spoken')}</span>` : '',
+    e.source === 'reflection' ? `<span class="tag tag-soft">🌙 ${t('Reflection')}</span>` : '',
+    e.source === 'heart' ? `<span class="tag tag-soft">🤍 ${t('In my heart')}</span>` : '',
   ].join('');
   return `<article class="entry-card ${compact ? 'compact' : ''}" data-id="${esc(e.id)}">
     <div class="entry-head">
       <time datetime="${esc(e.createdAt)}" class="entry-time">${dateStr}${esc(formatTime(when))}</time>
       <button type="button" class="icon-btn fav-btn ${e.favourite ? 'is-fav' : ''}" data-action="fav" data-id="${esc(e.id)}"
-        aria-pressed="${e.favourite}" aria-label="${e.favourite ? 'Remove from favourites' : 'Add to favourites'}">
+        aria-pressed="${e.favourite}" aria-label="${e.favourite ? t('Remove from favourites') : t('Add to favourites')}">
         ${e.favourite ? icons.heartFilled : icons.heart}
       </button>
     </div>
     <p class="entry-text">“${esc(e.text)}”</p>
-    ${e.promptUsed && e.source !== 'reflection' ? `<p class="entry-prompt">Prompt: ${esc(e.promptUsed)}</p>` : ''}
+    ${e.promptUsed && e.source !== 'reflection' ? `<p class="entry-prompt">${t('Prompt')}: ${esc(e.promptUsed)}</p>` : ''}
     <div class="entry-foot">
       <div class="tags">${meta}</div>
       ${compact ? `<div class="entry-actions">
-        <button type="button" class="icon-btn" data-action="share" data-id="${esc(e.id)}" aria-label="Share this gratitude as a picture card">${icons.share}</button>
+        <button type="button" class="icon-btn" data-action="share" data-id="${esc(e.id)}" aria-label="${t('Share this gratitude as a picture card')}">${icons.share}</button>
       </div>` : `<div class="entry-actions">
-        <button type="button" class="icon-btn" data-action="share" data-id="${esc(e.id)}" aria-label="Share this gratitude as a picture card">${icons.share}</button>
-        <button type="button" class="icon-btn" data-action="edit" data-id="${esc(e.id)}" aria-label="Edit this gratitude">${icons.edit}</button>
-        <button type="button" class="icon-btn" data-action="delete" data-id="${esc(e.id)}" aria-label="Delete this gratitude">${icons.trash}</button>
+        <button type="button" class="icon-btn" data-action="share" data-id="${esc(e.id)}" aria-label="${t('Share this gratitude as a picture card')}">${icons.share}</button>
+        <button type="button" class="icon-btn" data-action="edit" data-id="${esc(e.id)}" aria-label="${t('Edit this gratitude')}">${icons.edit}</button>
+        <button type="button" class="icon-btn" data-action="delete" data-id="${esc(e.id)}" aria-label="${t('Delete this gratitude')}">${icons.trash}</button>
       </div>`}
     </div>
   </article>`;
@@ -328,7 +329,7 @@ export function bindEntryActions(root, store) {
     if (!entry) return;
     if (btn.dataset.action === 'fav') {
       store.toggleFavourite(id);
-      announce(entry.favourite ? 'Added to favourites' : 'Removed from favourites');
+      announce(entry.favourite ? t('Added to favourites') : t('Removed from favourites'));
       // re-focus the same button after re-render
       requestAnimationFrame(() => document.querySelector(`button[data-action="fav"][data-id="${CSS.escape(id)}"]`)?.focus());
     } else if (btn.dataset.action === 'share') {
@@ -337,18 +338,18 @@ export function bindEntryActions(root, store) {
       const patch = await editEntryDialog(entry);
       if (patch) {
         store.updateEntry(id, patch);
-        toast('Gratitude updated.');
+        toast(t('Gratitude updated.'));
       }
     } else if (btn.dataset.action === 'delete') {
       const ok = await confirmDialog({
-        title: 'Delete this gratitude?',
+        title: t('Delete this gratitude?'),
         body: `“${entry.text.slice(0, 120)}${entry.text.length > 120 ? '…' : ''}”`,
-        confirmLabel: 'Delete',
+        confirmLabel: t('Delete'),
         danger: true,
       });
       if (ok) {
         const removed = store.deleteEntry(id);
-        toast('Gratitude deleted.', { action: 'Undo', onAction: () => store.restoreEntry(removed), duration: 7000 });
+        toast(t('Gratitude deleted.'), { action: t('Undo'), onAction: () => store.restoreEntry(removed), duration: 7000 });
       }
     }
   });

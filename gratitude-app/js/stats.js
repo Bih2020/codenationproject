@@ -1,5 +1,6 @@
 // Pure statistics: streaks, weekly summary, milestones, moods, memories.
 import { addDays, dayKey, daysBetween, startOfDay, startOfWeek, WEEKDAYS_LONG, agoLabel } from './dates.js';
+import { t } from './i18n.js';
 
 export const MOODS = [
   { id: 'great', emoji: '😄', label: 'Great', score: 5 },
@@ -93,6 +94,7 @@ export function weeklyStats(entries, date = new Date()) {
     daysPractised: byDay.filter((d) => d.count > 0).length,
     byDay,
     mostActiveDay: mostActive ? WEEKDAYS_LONG[mostActive.date.getDay()] : null,
+    mostActiveDayIndex: mostActive ? mostActive.date.getDay() : null,
     themes: countThemes(week).slice(0, 3),
     moods: countMoods(week),
     highlights,
@@ -171,5 +173,5 @@ export function pickMemory(entries, now = new Date()) {
   }
   const sorted = [...pool].sort((a, b) => String(a.id).localeCompare(String(b.id)));
   const entry = sorted[hashString(dayKey(now)) % sorted.length];
-  return { entry, label: `A gratitude from ${agoLabel(entry.createdAt, now)}` };
+  return { entry, label: t('A gratitude from {ago}', { ago: agoLabel(entry.createdAt, now) }) };
 }

@@ -1,6 +1,7 @@
 // Shareable gratitude cards: draws a gratitude onto a 1080×1350 image
 // (good for Instagram, WhatsApp and Facebook) with the Gladmoment / Gemrhythm credit.
 import { BRAND } from './config.js';
+import { t, getLocale } from './i18n.js';
 
 export const CARD_STYLES = [
   { id: 'dusk', label: 'Dusk', bg: ['#4b2aae', '#8a3ac0', '#d0566f', '#f2a35e'], ink: '#ffffff', soft: 'rgba(255,255,255,0.82)', blobs: ['#ffb38a', '#ffd66b', '#3fd1c4'] },
@@ -50,7 +51,7 @@ function fitText(ctx, text, maxWidth, maxHeight) {
  * @param {HTMLCanvasElement} canvas
  * @param {{ text: string, date?: Date, styleId?: string, heading?: string }} opts
  */
-export function drawCard(canvas, { text, date = new Date(), styleId = 'dusk', heading = 'Today I’m grateful for' }) {
+export function drawCard(canvas, { text, date = new Date(), styleId = 'dusk', heading = t('Today I’m grateful for') }) {
   const { width: W, height: H } = CARD_SIZE;
   canvas.width = W;
   canvas.height = H;
@@ -98,7 +99,7 @@ export function drawCard(canvas, { text, date = new Date(), styleId = 'dusk', he
   ctx.globalAlpha = 1;
 
   // The gratitude itself
-  const clean = String(text).trim().replace(/^i'?m grateful for\s*/i, '').replace(/^./, (c) => c.toUpperCase());
+  const clean = String(text).trim().replace(/^(i'?m grateful for|merci pour|je suis reconnaissante? (pour|de))\s*/i, '').replace(/^./, (c) => c.toUpperCase());
   const body = clean || String(text).trim();
   const area = { x: pad, y: 430, w: W - pad * 2, h: H - 430 - 330 };
   const fit = fitText(ctx, body, area.w, area.h);
@@ -114,7 +115,7 @@ export function drawCard(canvas, { text, date = new Date(), styleId = 'dusk', he
   // Date
   ctx.font = "600 34px system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif";
   ctx.fillStyle = s.soft;
-  ctx.fillText(new Date(date).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }), pad, H - 250);
+  ctx.fillText(new Date(date).toLocaleDateString(getLocale(), { day: 'numeric', month: 'long', year: 'numeric' }), pad, H - 250);
 
   // Footer credit
   ctx.fillStyle = s.ink;
@@ -139,7 +140,7 @@ export async function shareCard(canvas, { text } = {}) {
   const blob = await canvasToBlob(canvas);
   if (!blob) return 'failed';
   const file = new File([blob], 'gladmoment-gratitude.png', { type: 'image/png' });
-  const shareText = `${text ? `${text}\n\n` : ''}Made with ${BRAND.appName}, a free gratitude app: https://${BRAND.appUrl}/`;
+  const shareText = `${text ? `${text}\n\n` : ''}${t('Made with {app}, a free gratitude app:', { app: BRAND.appName })} https://${BRAND.appUrl}/`;
   try {
     if (navigator.canShare?.({ files: [file] })) {
       await navigator.share({ files: [file], text: shareText, title: BRAND.appName });
