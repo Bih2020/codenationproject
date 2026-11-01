@@ -25,6 +25,7 @@ export function defaultReminderSettings() {
     weekendEnd: '21:00',
     sound: true,
     vibration: true,
+    quiet: false, // bell mode "vibrate only": no sound, give thanks silently (work, school)
   };
 }
 
@@ -69,6 +70,17 @@ export function pauseEnd(settings) {
 export function isPaused(settings, now = new Date()) {
   const end = pauseEnd(settings);
   return end !== null && end > new Date(now).getTime();
+}
+
+/** Bell modes shown in the header: 'ring' | 'quiet' (vibrate only) | 'off'. */
+export function bellMode(settings) {
+  if (!settings.enabled) return 'off';
+  return settings.quiet ? 'quiet' : 'ring';
+}
+
+export function bellModePatch(mode) {
+  if (mode === 'off') return { enabled: false, pausedUntil: null };
+  return { enabled: true, quiet: mode === 'quiet', pausedUntil: null, ...(mode === 'quiet' ? { vibration: true } : {}) };
 }
 
 export function remindersActive(settings, now = new Date()) {

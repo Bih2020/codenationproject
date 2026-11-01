@@ -17,6 +17,7 @@ const svg = (path, extra = '') =>
 
 export const icons = {
   bell: svg('<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/>'),
+  vibrate: svg('<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M3 8v8M21 8v8M11 18h2"/>'),
   bellOff: svg('<path d="M13.7 21a2 2 0 0 1-3.4 0"/><path d="M18.6 13A17 17 0 0 1 18 8"/><path d="M6.3 6.3A6 6 0 0 0 6 8c0 7-3 9-3 9h14"/><path d="M18 8a6 6 0 0 0-9.3-5"/><path d="m2 2 20 20"/>'),
   settings: svg('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
   home: svg('<path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2h-4v-7H9v7H5a2 2 0 0 1-2-2z"/>'),
@@ -106,6 +107,44 @@ export function confirmDialog({ title, body = '', confirmLabel = 'Confirm', canc
       { onClose: (v) => resolve(v === 'confirm') }
     );
     dlg.querySelector('button[value="cancel"]').focus();
+  });
+}
+
+/** The bell menu: ring with sound, vibrate only (quiet), or off. Resolves to the chosen mode or null. */
+export function bellModeDialog(current, { vibrationSupported = true } = {}) {
+  const opt = (value, title, desc) => `<label class="bell-opt" for="bell-${value}">
+      <input type="radio" name="bell-mode" id="bell-${value}" value="${value}" ${current === value ? 'checked' : ''}>
+      <span class="bell-opt-icon" aria-hidden="true">${value === 'ring' ? icons.bell : value === 'quiet' ? icons.vibrate : icons.bellOff}</span>
+      <span class="bell-opt-text"><strong>${title}</strong><span>${desc}</span></span>
+    </label>`;
+  return new Promise((resolve) => {
+    let choice = null;
+    const dlg = openDialog(
+      `<form method="dialog" class="dialog-card" id="bell-form">
+        <h2 id="dialog-title">Gratitude bell</h2>
+        <fieldset class="bell-opts"><legend class="sr-only">Choose how reminders reach you</legend>
+          ${opt('ring', 'Sound', 'A soft chime and a notification.')}
+          ${opt('quiet', 'Vibrate only', `For work or school. No sound: just pause and give thanks silently in your heart.${vibrationSupported ? '' : ' (This device can’t vibrate, so reminders arrive silently.)'}`)}
+          ${opt('off', 'Off', 'No reminders until you turn the bell back on.')}
+        </fieldset>
+        <div class="dialog-actions">
+          <button value="cancel" class="btn btn-ghost" formnovalidate>Cancel</button>
+          <button value="save" class="btn btn-primary">Done</button>
+        </div>
+      </form>`,
+      { onClose: (v) => resolve(v === 'save' ? choice : null) }
+    );
+    dlg.querySelector('#bell-form').addEventListener('submit', (ev) => {
+      if (ev.submitter?.value === 'save') choice = dlg.querySelector('input[name="bell-mode"]:checked')?.value || null;
+    });
+    // Choosing an option applies it straight away.
+    dlg.querySelectorAll('input[name="bell-mode"]').forEach((r) =>
+      r.addEventListener('change', () => {
+        choice = r.value;
+        dlg.close('save');
+      })
+    );
+    dlg.querySelector('input[name="bell-mode"]:checked')?.focus();
   });
 }
 
@@ -209,6 +248,7 @@ export function entryCard(e, { showDate = false, compact = false } = {}) {
     mood ? `<span class="tag tag-mood" title="Mood: ${esc(mood.label)}"><span aria-hidden="true">${mood.emoji}</span> ${esc(mood.label)}</span>` : '',
     e.source === 'voice' ? '<span class="tag tag-soft">🎙 Spoken</span>' : '',
     e.source === 'reflection' ? '<span class="tag tag-soft">🌙 Reflection</span>' : '',
+    e.source === 'heart' ? '<span class="tag tag-soft">🤍 In my heart</span>' : '',
   ].join('');
   return `<article class="entry-card ${compact ? 'compact' : ''}" data-id="${esc(e.id)}">
     <div class="entry-head">

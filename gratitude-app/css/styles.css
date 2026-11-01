@@ -580,3 +580,33 @@ main.entering .card, main.entering .entry-card { animation: rise 0.45s var(--eas
 
 /* Headings receive programmatic focus for screen readers; no visible ring needed. */
 h1[tabindex='-1']:focus, h1[tabindex='-1']:focus-visible { box-shadow: none; outline: none; }
+
+/* ---------- tap-to-add words ---------- */
+.word-ideas { margin-top: 12px; }
+.word-ideas-title { font-size: 0.85rem; font-weight: 700; color: var(--muted); margin: 0 0 8px; }
+.word-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.word-chip {
+  min-height: 40px; padding: 6px 14px; border-radius: 999px; border: 0; font-weight: 600; font-size: 0.92rem;
+  background: var(--primary-soft); color: var(--primary-ink); transition: transform 0.15s var(--ease), filter 0.2s;
+}
+.word-chip:nth-child(4n + 2) { background: var(--teal-soft); color: var(--teal-ink); }
+.word-chip:nth-child(4n + 3) { background: var(--coral-soft); color: var(--coral-ink); }
+.word-chip:nth-child(4n + 4) { background: var(--yellow-soft); color: var(--yellow-ink); }
+.word-chip:hover { filter: brightness(0.96); }
+.word-chip:active { transform: scale(0.95); }
+.heart-btn { width: 100%; margin-top: 8px; }
+
+/* ---------- bell menu ---------- */
+.bell.is-quiet { background: rgba(255, 214, 107, 0.28); }
+.bell.is-off { background: rgba(0, 0, 0, 0.18); }
+.bell-opts { border: 0; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.bell-opt {
+  position: relative; display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: 16px;
+  border: 2px solid var(--border); cursor: pointer; background: var(--surface);
+}
+.bell-opt input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.bell-opt:has(input:checked) { border-color: var(--primary); background: var(--primary-soft); }
+.bell-opt:has(input:focus-visible) { box-shadow: var(--focus); }
+.bell-opt-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); color: var(--primary-ink); flex: none; }
+.bell-opt-text { display: flex; flex-direction: column; }
+.bell-opt-text span { font-size: 0.88rem; color: var(--muted); }

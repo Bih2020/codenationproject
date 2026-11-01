@@ -87,3 +87,18 @@ test('reminder records follow the data model', () => {
   assert.deepEqual(Object.keys(r[0]).sort(), ['active', 'frequency', 'id', 'scheduledTime', 'selectedDays', 'userId']);
   assert.equal(r[0].frequency, 'every-120-minutes');
 });
+
+import { bellMode, bellModePatch } from '../../js/schedule.js';
+
+test('bell modes: sound, vibrate only, off', () => {
+  const s = defaultReminderSettings();
+  assert.equal(bellMode(s), 'ring');
+  const quiet = { ...s, ...bellModePatch('quiet') };
+  assert.equal(bellMode(quiet), 'quiet');
+  assert.equal(quiet.vibration, true);
+  assert.ok(nextReminder(quiet, at(2026, 11, 2, 9)), 'quiet mode still reminds');
+  const off = { ...quiet, ...bellModePatch('off') };
+  assert.equal(bellMode(off), 'off');
+  assert.equal(nextReminder(off, at(2026, 11, 2, 9)), null);
+  assert.equal(bellMode({ ...off, ...bellModePatch('ring') }), 'ring');
+});

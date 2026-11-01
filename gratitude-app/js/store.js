@@ -151,7 +151,7 @@ export function createStore({ storage, now = () => new Date() } = {}) {
       });
     },
 
-    addEntry({ text, category = null, mood = null, source = 'typed', promptUsed = null, createdAt, reflectionId = null }) {
+    addEntry({ text, category = null, mood = null, source = 'typed', promptUsed = null, createdAt, reflectionId = null, inferTheme = true }) {
       const clean = String(text || '').trim();
       if (!clean) throw new Error('Entry text is required');
       const chosen = category || null;
@@ -161,7 +161,7 @@ export function createStore({ storage, now = () => new Date() } = {}) {
         text: clean,
         createdAt: new Date(createdAt || now()).toISOString(),
         updatedAt: null,
-        category: chosen || inferCategory(clean),
+        category: chosen || (inferTheme ? inferCategory(clean) : null),
         categorySource: chosen ? 'user' : 'auto',
         mood: mood || null,
         favourite: false,

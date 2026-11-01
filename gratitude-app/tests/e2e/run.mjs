@@ -188,18 +188,56 @@ await t('journal: search, filter, edit, favourite, delete + undo, calendar', asy
   assert.deepEqual(page.errors, []);
 });
 
-await t('bell toggles reminders on/off from the header', async () => {
-  const page = await newPage();
+await t('bell menu: sound, vibrate only (quiet) and off', async () => {
+  const page = await newPage({ clock: new Date(2026, 10, 2, 13, 59, 0) });
   await onboard(page);
-  assert.equal(await page.getAttribute('#bell-toggle', 'aria-pressed'), 'true');
-  await page.click('#bell-toggle');
-  assert.equal(await page.getAttribute('#bell-toggle', 'aria-pressed'), 'false');
+  const pick = async (mode) => {
+    await page.click('#bell-toggle');
+    await page.click(`label[for="bell-${mode}"]`);
+    await page.waitForSelector('#dialog:not([open])', { state: 'attached' });
+  };
+  await pick('quiet');
+  assert.match(await page.textContent('#next-chip'), /Vibrate only · Next gratitude moment/);
+  assert.match(await page.getAttribute('#bell-toggle', 'aria-label'), /vibrate only/);
+  // a quiet reminder invites a silent thank-you
+  await page.clock.fastForward('02:00');
+  await page.waitForSelector('.reminder-banner-card');
+  assert.match(await page.textContent('.reminder-banner-card'), /silently in your heart/);
+  await page.click('[data-rb="heart"]');
+  const e = await page.evaluate(() => window.__gratitude.store.state.entries[0]);
+  assert.equal(e.source, 'heart');
+  await pick('off');
   assert.match(await page.textContent('#next-chip'), /Reminders are off/);
   await page.reload();
   await page.waitForSelector('#bell-toggle');
-  assert.equal(await page.getAttribute('#bell-toggle', 'aria-pressed'), 'false');
-  await page.click('#bell-toggle');
-  assert.match(await page.textContent('#next-chip'), /Next gratitude moment/);
+  assert.match(await page.getAttribute('#bell-toggle', 'aria-label'), /: off/);
+  await pick('ring');
+  assert.match(await page.textContent('#next-chip'), /^\s*🔔\s*Next gratitude moment/);
+  assert.deepEqual(page.errors, []);
+});
+
+await t('tap-to-add words follow theme and question; money theme; heart button', async () => {
+  const page = await newPage();
+  await onboard(page);
+  await page.click('#word-ideas [data-word]');
+  assert.match(await page.inputValue('#gratitude-text'), /^I'm grateful for /);
+  await page.selectOption('#entry-theme', 'money');
+  assert.match(await page.textContent('#word-ideas'), /Money & provision/);
+  await page.click('[data-word="Payday"]');
+  assert.match(await page.inputValue('#gratitude-text'), /, payday$/);
+  // money is the last theme option and last quick idea
+  assert.equal(await page.$eval('#entry-theme option:last-child', (o) => o.value), 'money');
+  assert.equal(await page.$eval('.chips [data-chip]:last-child', (b) => b.dataset.chip), 'money');
+  // choosing a quick idea / question changes the words too
+  await page.selectOption('#entry-theme', '');
+  await page.click('[data-chip="nature"]');
+  assert.match(await page.textContent('#word-ideas'), /Nature/);
+  await page.click('#save-btn');
+  await page.click('#heart-btn');
+  assert.match(await page.textContent('#save-ack'), /quiet thank-you/);
+  const s = await page.evaluate(() => window.__gratitude.store.state.entries.map((e) => e.source));
+  assert.deepEqual(s, ['heart', 'typed']);
+  await page.waitForTimeout(700); await page.screenshot({ path: `${shots}home-words.png`, fullPage: true });
 });
 
 await t('reminder settings: frequency, custom times, active hours, days, pause/resume', async () => {

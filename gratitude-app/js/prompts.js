@@ -18,10 +18,11 @@ export const CATEGORIES = {
   memories: { label: 'Memories', emoji: '📸' },
   community: { label: 'Community', emoji: '🏘️' },
   kindness: { label: 'Kindness', emoji: '🙏' },
+  money: { label: 'Money & provision', chip: 'Money', emoji: '💰' },
 };
 
 /** Quick suggestion chips on the Home screen, in display order. */
-export const QUICK_CHIPS = ['family', 'home', 'everyday', 'food', 'friendship', 'nature', 'opportunities', 'learning', 'health', 'kindness'];
+export const QUICK_CHIPS = ['family', 'home', 'everyday', 'food', 'friendship', 'nature', 'opportunities', 'learning', 'health', 'kindness', 'money'];
 
 export function categoryLabel(id) {
   const c = CATEGORIES[id];
@@ -235,6 +236,18 @@ const LIBRARY = {
     'Which thoughtful gesture surprised you?',
     'Who checked in on you when you needed it?',
   ],
+  money: [
+    'What bill or need were you able to pay for recently?',
+    'What money or provision arrived when you needed it?',
+    'Who has been generous to you with money or resources?',
+    'What did your income allow you to do this week?',
+    'What small purchase brought you real joy?',
+    'What do you have enough of today?',
+    'What is something useful you got for free or at a good price?',
+    'What financial lesson are you grateful to have learned?',
+    'Who taught you how to look after money?',
+    'What are you able to give or share because of what you have?',
+  ],
 };
 
 export const PROMPTS = Object.entries(LIBRARY).flatMap(([category, list]) =>
@@ -268,7 +281,7 @@ const KEYWORDS = {
   family: ['family', 'mum', 'mom', 'mother', 'dad', 'father', 'parent', 'sister', 'brother', 'sibling', 'son', 'daughter', 'kids', 'children', 'child', 'baby', 'grandma', 'grandad', 'grandpa', 'granny', 'nan', 'aunt', 'uncle', 'cousin', 'niece', 'nephew'],
   friendship: ['friend', 'friends', 'bestie', 'mate', 'mates', 'buddy'],
   health: ['health', 'healthy', 'body', 'sleep', 'slept', 'rested', 'energy', 'walk', 'run', 'exercise', 'gym', 'yoga', 'breathe', 'recovered', 'doctor', 'nurse', 'wellbeing', 'calm', 'medicine'],
-  work: ['work', 'job', 'colleague', 'boss', 'manager', 'office', 'meeting', 'project', 'client', 'team', 'career', 'shift', 'salary'],
+  work: ['work', 'job', 'colleague', 'boss', 'manager', 'office', 'meeting', 'project', 'client', 'team', 'career', 'shift'],
   learning: ['learn', 'learned', 'learnt', 'learning', 'course', 'class', 'lesson', 'teacher', 'school', 'college', 'university', 'study', 'studying', 'book', 'read', 'exam', 'assignment', 'mentor'],
   growth: ['grew', 'growth', 'proud of myself', 'confidence', 'brave', 'courage', 'boundary', 'myself', 'patience', 'habit'],
   nature: ['nature', 'sun', 'sunshine', 'sunset', 'sunrise', 'rain', 'sky', 'tree', 'trees', 'flower', 'flowers', 'garden', 'park', 'sea', 'beach', 'ocean', 'bird', 'birds', 'walk outside', 'fresh air', 'snow', 'weather', 'forest', 'mountain', 'dog', 'cat', 'pet'],
@@ -281,6 +294,7 @@ const KEYWORDS = {
   memories: ['remember', 'memory', 'memories', 'childhood', 'used to', 'years ago', 'photo', 'nostalgia'],
   community: ['community', 'neighbour', 'neighbor', 'church', 'mosque', 'temple', 'volunteer', 'local', 'library', 'bus driver', 'charity', 'club'],
   kindness: ['kind', 'kindness', 'helped', 'help', 'thoughtful', 'generous', 'stranger', 'thank', 'smiled at me', 'support', 'supported'],
+  money: ['money', 'pay', 'paid', 'payday', 'salary', 'wages', 'income', 'bill', 'bills', 'rent', 'savings', 'saved', 'afford', 'bonus', 'refund', 'discount', 'budget', 'debt', 'cash', 'provision'],
   everyday: ['today', 'smile', 'laugh', 'music', 'song', 'quiet', 'peace', 'moment', 'morning', 'little things'],
 };
 
@@ -300,6 +314,42 @@ export function inferCategory(text) {
     }
   }
   return best;
+}
+
+/** Short tap-to-add ideas shown under the text box, matched to the theme or question. */
+export const WORD_IDEAS = {
+  family: ['My mum', 'My dad', 'My children', 'My siblings', 'My grandparents', 'Family time', 'A phone call home', 'Being loved'],
+  friendship: ['A good friend', 'A long chat', 'Shared laughter', 'A kind message', 'Being listened to', 'Old friends'],
+  health: ['Good health', 'A good night’s sleep', 'My breath', 'Strong legs', 'Feeling rested', 'A healthy meal', 'Healing'],
+  work: ['My job', 'Helpful colleagues', 'A finished task', 'Good feedback', 'A calm workday', 'Being useful'],
+  learning: ['Something new I learned', 'A good teacher', 'A great book', 'My course', 'Curiosity', 'A useful lesson'],
+  growth: ['Patience', 'Courage', 'Staying calm', 'A good decision', 'Being kind to myself', 'Progress'],
+  nature: ['Sunshine', 'Fresh air', 'Birdsong', 'Rain', 'Trees', 'The sky', 'Flowers', 'A walk outside'],
+  food: ['A warm meal', 'A cup of tea', 'Coffee', 'Clean water', 'Fresh fruit', 'Breakfast', 'A shared meal'],
+  home: ['A roof over my head', 'My bed', 'A warm shower', 'Heating', 'A quiet room', 'My kitchen', 'Feeling safe'],
+  relationships: ['My partner', 'A hug', 'Being understood', 'Someone who believes in me', 'Kind words', 'Being loved'],
+  achievements: ['A small win', 'A finished task', 'Trying my best', 'Progress', 'A goal reached', 'Being brave'],
+  opportunities: ['A new chance', 'Freedom to choose', 'Something to look forward to', 'An open door', 'Hope'],
+  everyday: ['A smile', 'Laughter', 'Music', 'A quiet moment', 'A good morning', 'Something beautiful', 'Rest'],
+  challenges: ['Getting through it', 'Lessons learned', 'Help when I needed it', 'Inner strength', 'A fresh start'],
+  memories: ['A happy memory', 'Childhood', 'An old photo', 'A special place', 'A celebration', 'Good times'],
+  community: ['My neighbours', 'My place of worship', 'The library', 'Local shops', 'Volunteers', 'Belonging'],
+  kindness: ['A kind word', 'A stranger’s help', 'Someone’s patience', 'A thoughtful gift', 'Being checked on'],
+  money: ['Being able to pay my bills', 'My income', 'Payday', 'Food on the table', 'Savings', 'A generous gift', 'Having enough', 'Money to share'],
+};
+const GENERAL_IDEAS = ['Breath', 'Sunshine', 'A smile', 'Clean water', 'Good health', 'A kind word', 'Rest', 'Fresh air', 'Laughter', 'My family'];
+
+export function wordIdeasFor(category) {
+  return WORD_IDEAS[category] || GENERAL_IDEAS;
+}
+
+/** Add a tapped idea to whatever has been written so far. */
+export function addIdea(text, idea) {
+  // Lower-case the first letter so it reads as part of a sentence ("my mum", "a smile").
+  const keep = idea.charAt(0).toLowerCase() + idea.slice(1);
+  const current = String(text || '').trim();
+  if (!current) return `I'm grateful for ${keep}`;
+  return `${current.replace(/[.,;\s]+$/, '')}, ${keep}`;
 }
 
 export const POSITIVE_MESSAGES = [

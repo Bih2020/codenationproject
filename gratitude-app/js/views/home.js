@@ -1,8 +1,9 @@
 // Home: header with greeting + bell, the gratitude composer, inspiration,
 // today's progress, a memory from the past and the evening reflection nudge.
-import { esc, icons, entryCard, bindEntryActions, moodPicker, makeMoodDeselectable, categoryOptions, toast, announce } from '../ui.js';
-import { CATEGORIES, QUICK_CHIPS, pickPrompt, POSITIVE_MESSAGES, SAVE_ACKNOWLEDGEMENTS } from '../prompts.js';
-import { nextReminder, isPaused, pauseEnd } from '../schedule.js';
+import { esc, icons, entryCard, bindEntryActions, moodPicker, makeMoodDeselectable, categoryOptions, toast, announce, bellModeDialog } from '../ui.js';
+import { CATEGORIES, QUICK_CHIPS, pickPrompt, POSITIVE_MESSAGES, SAVE_ACKNOWLEDGEMENTS, wordIdeasFor, addIdea } from '../prompts.js';
+import { nextReminder, isPaused, pauseEnd, bellMode, bellModePatch } from '../schedule.js';
+import { vibrationSupported } from '../notifications.js';
 import { summary, pickMemory, milestoneStatus } from '../stats.js';
 import { greetingFor, formatLongDate, formatTime, dayKey, daysBetween, parseTime, WEEKDAYS_LONG } from '../dates.js';
 import { createVoiceInput, voiceSupported } from '../voice.js';
@@ -26,7 +27,7 @@ function loadDraft() {
     const d = JSON.parse(sessionStorage.getItem(DRAFT_KEY) || 'null');
     if (d && typeof d.text === 'string') return d;
   } catch { /* ignore */ }
-  return { text: '', category: '', mood: null, promptUsed: null, usedVoice: false };
+  return { text: '', category: '', mood: null, promptUsed: null, promptCategory: null, usedVoice: false };
 }
 function saveDraft() {
   try {
@@ -34,7 +35,7 @@ function saveDraft() {
   } catch { /* ignore */ }
 }
 function resetDraft() {
-  Object.assign(draft, { text: '', category: '', mood: null, promptUsed: null, usedVoice: false });
+  Object.assign(draft, { text: '', category: '', mood: null, promptUsed: null, promptCategory: null, usedVoice: false });
   saveDraft();
 }
 
@@ -106,6 +107,25 @@ function updateVoiceUi() {
   }
 }
 
+// ---------- tap-to-add words ----------
+function ideasCategory() {
+  return draft.category || draft.promptCategory || prompt?.category || null;
+}
+
+function wordIdeasHtml() {
+  const cat = ideasCategory();
+  const c = cat && CATEGORIES[cat];
+  return `<p class="word-ideas-title" id="word-ideas-title">Tap to add${c ? ` · <span aria-hidden="true">${c.emoji}</span> ${esc(c.label)}` : ''}</p>
+    <div class="word-chips" role="group" aria-labelledby="word-ideas-title">
+      ${wordIdeasFor(cat).map((w) => `<button type="button" class="word-chip" data-word="${esc(w)}">${esc(w)}</button>`).join('')}
+    </div>`;
+}
+
+function refreshWords() {
+  const el = document.getElementById('word-ideas');
+  if (el) el.innerHTML = wordIdeasHtml();
+}
+
 // ---------- header ----------
 export function describeNext(settings, now = new Date()) {
   if (!settings.enabled) return { state: 'off', text: 'Reminders are off', short: 'Reminders off' };
@@ -116,7 +136,8 @@ export function describeNext(settings, now = new Date()) {
   }
   const next = nextReminder(settings, now);
   if (!next) return { state: 'none', text: 'No upcoming reminders — check your schedule', short: 'None scheduled' };
-  return { state: 'on', text: `Next gratitude moment: ${whenLabel(next, now)}`, short: whenLabel(next, now), at: next };
+  const quiet = settings.quiet ? 'Vibrate only · ' : '';
+  return { state: 'on', quiet: Boolean(settings.quiet), text: `${quiet}Next gratitude moment: ${whenLabel(next, now)}`, short: whenLabel(next, now), at: next };
 }
 
 function whenLabel(d, now) {
@@ -135,10 +156,11 @@ function headerHtml(ctx) {
   const msg = POSITIVE_MESSAGES[(now.getDate() + now.getMonth()) % POSITIVE_MESSAGES.length];
   const rs = state.reminderSettings;
   const next = describeNext(rs, now);
-  const on = rs.enabled;
-  const bellLabel = on
-    ? `Gratitude reminders are on. ${next.text}. Tap to turn reminders off.`
-    : 'Gratitude reminders are off. Tap to turn reminders on.';
+  const mode = bellMode(rs);
+  const on = mode !== 'off';
+  const modeName = { ring: 'sound', quiet: 'vibrate only', off: 'off' }[mode];
+  const bellLabel = `Gratitude bell: ${modeName}.${on ? ` ${next.text}.` : ''} Change bell mode`;
+  const bellIcon = mode === 'ring' ? icons.bell : mode === 'quiet' ? icons.vibrate : icons.bellOff;
   return `<header class="hero" id="hero">
     <div class="hero-blobs" aria-hidden="true"><span></span><span></span><span></span></div>
     <div class="hero-top">
@@ -150,8 +172,8 @@ function headerHtml(ctx) {
         </div>
       </div>
       <div class="hero-actions">
-        <button type="button" id="bell-toggle" class="hero-icon bell ${on ? 'is-on' : 'is-off'}" aria-pressed="${on}" aria-label="${esc(bellLabel)}" title="${on ? 'Turn reminders off' : 'Turn reminders on'}">
-          ${on ? icons.bell : icons.bellOff}
+        <button type="button" id="bell-toggle" class="hero-icon bell is-${mode}" aria-haspopup="dialog" aria-label="${esc(bellLabel)}" title="Bell: ${modeName}">
+          ${bellIcon}
           ${on && next.state === 'on' ? '<span class="bell-dot" aria-hidden="true"></span>' : ''}
         </button>
         <a href="#/settings" class="hero-icon" aria-label="Settings">${icons.settings}</a>
@@ -161,7 +183,7 @@ function headerHtml(ctx) {
     <p class="hero-quote">“${esc(msg)}”</p>
     <div class="next-row">
       <a href="#/settings?section=reminders" class="next-chip state-${next.state}" id="next-chip">
-        <span aria-hidden="true">${next.state === 'on' ? '🔔' : next.state === 'paused' ? '⏸️' : '🔕'}</span>
+        <span aria-hidden="true">${next.state === 'on' ? (next.quiet ? '📳' : '🔔') : next.state === 'paused' ? '⏸️' : '🔕'}</span>
         <span>${esc(next.text)}</span>
       </a>
       ${next.state === 'paused' ? '<button type="button" class="chip-btn" id="resume-btn">Resume</button>' : ''}
@@ -181,11 +203,20 @@ export function refreshHeader(root, ctx) {
 
 function bindHeader(root, ctx) {
   const { store } = ctx;
-  root.querySelector('#bell-toggle')?.addEventListener('click', () => {
-    const enabled = !store.state.reminderSettings.enabled;
-    store.updateReminders({ enabled, pausedUntil: null });
+  root.querySelector('#bell-toggle')?.addEventListener('click', async () => {
+    const current = bellMode(store.state.reminderSettings);
+    const mode = await bellModeDialog(current, { vibrationSupported: vibrationSupported() });
+    if (!mode || mode === current) return;
+    store.updateReminders(bellModePatch(mode));
     const next = describeNext(store.state.reminderSettings);
-    toast(enabled ? `Reminders on. ${next.text}.` : 'Reminders off. Turn them back on anytime with the bell.');
+    if (mode === 'quiet' && vibrationSupported()) navigator.vibrate(200);
+    toast(
+      mode === 'off'
+        ? 'Bell off. Tap the bell to turn reminders back on.'
+        : mode === 'quiet'
+          ? `Vibrate only. Reminders will be silent: give thanks in your heart. ${next.text}.`
+          : `Bell on with sound. ${next.text}.`
+    );
     requestAnimationFrame(() => document.getElementById('bell-toggle')?.focus());
   });
   root.querySelector('#resume-btn')?.addEventListener('click', () => {
@@ -239,12 +270,14 @@ export function render(ctx) {
       </div>
       <p class="voice-message" id="voice-message" role="alert" ${voiceMessage ? '' : 'hidden'}>${esc(voiceMessage)}</p>
       ${canSpeak ? '' : '<p class="hint" id="voice-unsupported">Voice input isn’t supported in this browser — typing works everywhere.</p>'}
+      <div class="word-ideas" id="word-ideas">${wordIdeasHtml()}</div>
       <div class="compose-extras">
         <label class="field-label small" for="entry-theme">Theme <span class="muted">(optional)</span></label>
         <select id="entry-theme" class="select">${categoryOptions(draft.category)}</select>
         ${prefs.askMood ? moodPicker('entry-mood', draft.mood) : ''}
       </div>
       <button type="button" class="btn btn-primary btn-xl ${draft.text.trim() ? '' : 'is-empty'}" id="save-btn">Save Gratitude</button>
+      <button type="button" class="btn btn-ghost heart-btn" id="heart-btn"><span aria-hidden="true">🤍</span> I said it in my heart</button>
       <p class="save-ack ${ack ? 'show' : ''}" id="save-ack" role="status" aria-live="polite">${esc(ack)}</p>
     </section>
 
@@ -330,6 +363,7 @@ export function mount(root, ctx, params) {
   root.querySelector('#entry-theme').addEventListener('change', (ev) => {
     draft.category = ev.target.value;
     saveDraft();
+    refreshWords();
   });
   makeMoodDeselectable(root.querySelector('.compose'), (m) => {
     draft.mood = m;
@@ -337,6 +371,7 @@ export function mount(root, ctx, params) {
   });
   root.querySelector('#clear-prompt')?.addEventListener('click', () => {
     draft.promptUsed = null;
+    draft.promptCategory = null;
     saveDraft();
     ctx.rerender();
     document.getElementById('gratitude-text')?.focus();
@@ -376,9 +411,40 @@ export function mount(root, ctx, params) {
   }
   saveBtn.addEventListener('click', save);
 
+  root.querySelector('#word-ideas').addEventListener('click', (ev) => {
+    const chip = ev.target.closest('[data-word]');
+    if (!chip) return;
+    ta.value = addIdea(ta.value, chip.dataset.word);
+    draft.text = ta.value;
+    saveDraft();
+    syncSaveState();
+    announce(`Added ${chip.dataset.word}. Save when you're ready.`);
+  });
+
+  root.querySelector('#heart-btn').addEventListener('click', () => {
+    if (listening) voice?.stop();
+    store.addEntry({
+      text: 'Gave thanks silently in my heart',
+      source: 'heart',
+      category: draft.category || null,
+      mood: draft.mood,
+      inferTheme: false,
+      promptUsed: draft.promptUsed,
+    });
+    ack = 'A quiet thank-you, counted. 🤍';
+    clearTimeout(ackTimer);
+    ackTimer = setTimeout(() => {
+      ack = '';
+      document.getElementById('save-ack')?.classList.remove('show');
+    }, 6000);
+    ctx.rerender();
+    document.getElementById('heart-btn')?.focus();
+  });
+
   root.querySelector('#another-prompt').addEventListener('click', () => {
     newPrompt(ctx, activeChip || undefined);
     root.querySelector('#prompt-text').textContent = `“${prompt.text}”`;
+    if (!draft.promptUsed) refreshWords();
   });
   root.querySelector('#use-prompt').addEventListener('click', () => usePrompt(ctx));
   root.querySelectorAll('[data-chip]').forEach((chip) =>
@@ -406,6 +472,7 @@ export function mount(root, ctx, params) {
 
 function usePrompt(ctx) {
   draft.promptUsed = prompt.text;
+  draft.promptCategory = prompt.category;
   saveDraft();
   ctx.rerender();
   const ta = document.getElementById('gratitude-text');

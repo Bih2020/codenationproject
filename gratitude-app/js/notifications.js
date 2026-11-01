@@ -14,6 +14,7 @@ import { remindersBetween, upcomingReminders } from './schedule.js';
 export const REMINDER_TITLE = 'A little gratitude moment 💛';
 export const REMINDER_BODY = "Take a few seconds. What is one thing you're grateful for right now?";
 export const OPEN_URL = './#/home?focus=1';
+export const QUIET_BODY = 'Quiet moment 📳 Pause and give thanks silently in your heart.';
 
 const nativeLN = () => globalThis.Capacitor?.Plugins?.LocalNotifications || null;
 
@@ -47,10 +48,14 @@ export async function requestNotificationPermission() {
 }
 
 /** Show a system notification right now (web). Returns true if shown. */
-export async function showWebNotification({ sound = true, vibration = true } = {}) {
+export async function showWebNotification({ sound = true, vibration = true, quiet = false } = {}) {
   if (!('Notification' in globalThis) || Notification.permission !== 'granted') return false;
+  if (quiet) {
+    sound = false;
+    vibration = true;
+  }
   const options = {
-    body: REMINDER_BODY,
+    body: quiet ? QUIET_BODY : REMINDER_BODY,
     icon: './icons/icon-192.png',
     badge: './icons/icon-192.png',
     tag: 'gratitude-reminder',
@@ -92,9 +97,9 @@ export async function syncNativeSchedule(settings, now = new Date()) {
       notifications: times.map((at, i) => ({
         id: 1000 + i,
         title: REMINDER_TITLE,
-        body: REMINDER_BODY,
+        body: settings.quiet ? QUIET_BODY : REMINDER_BODY,
         schedule: { at, allowWhileIdle: true },
-        sound: settings.sound ? undefined : null,
+        sound: settings.sound && !settings.quiet ? undefined : null,
         extra: { url: OPEN_URL },
       })),
     });
@@ -180,8 +185,8 @@ export class ReminderEngine {
       if (!visible) await showWebNotification(s);
     }
     if (visible) {
-      if (s.sound) softChime();
-      if (s.vibration && vibrationSupported()) navigator.vibrate([120, 80, 120]);
+      if (s.sound && !s.quiet) softChime();
+      if ((s.vibration || s.quiet) && vibrationSupported()) navigator.vibrate(s.quiet ? [300, 150, 300] : [120, 80, 120]);
     }
     this.onReminder(at, { visible });
   }

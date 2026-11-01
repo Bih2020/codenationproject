@@ -29,3 +29,24 @@ test('inferCategory', () => {
   assert.equal(inferCategory('finished my course assignment'), 'learning');
   assert.equal(inferCategory('zzz'), null);
 });
+
+import { WORD_IDEAS, wordIdeasFor, addIdea } from '../../js/prompts.js';
+
+test('money theme exists, sits last, and has prompts, words and keywords', () => {
+  const ids = Object.keys(CATEGORIES);
+  assert.equal(ids.at(-1), 'money');
+  assert.equal(QUICK_CHIPS.at(-1), 'money');
+  assert.ok(PROMPTS.filter((p) => p.category === 'money').length >= 8);
+  assert.equal(inferCategory('payday came and I could pay my rent'), 'money');
+});
+
+test('every theme has tap-to-add words; unknown theme gets general words', () => {
+  for (const c of Object.keys(CATEGORIES)) assert.ok(WORD_IDEAS[c]?.length >= 5, c);
+  assert.ok(wordIdeasFor(null).length >= 5);
+  assert.notDeepEqual(wordIdeasFor('money'), wordIdeasFor('family'));
+});
+
+test('addIdea builds a sentence', () => {
+  assert.equal(addIdea('', 'My mum'), "I'm grateful for my mum");
+  assert.equal(addIdea("I'm grateful for my mum.", 'Sunshine'), "I'm grateful for my mum, sunshine");
+});

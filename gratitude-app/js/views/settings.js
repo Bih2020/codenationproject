@@ -66,7 +66,7 @@ function previewHtml(rs) {
     }
   }
   return `<div class="preview" aria-live="polite" id="reminder-preview">
-    <p class="preview-next"><span aria-hidden="true">${next.state === 'on' ? '🔔' : next.state === 'paused' ? '⏸️' : '🔕'}</span> ${esc(next.text)}</p>
+    <p class="preview-next"><span aria-hidden="true">${next.state === 'on' ? (next.quiet ? '📳' : '🔔') : next.state === 'paused' ? '⏸️' : '🔕'}</span> ${esc(next.text)}</p>
     ${slots.length ? `<p class="muted small">${esc(label)}: ${slots.length} ${slots.length === 1 ? 'reminder' : 'reminders'} — ${slots.slice(0, 12).map((d) => esc(formatTime(d))).join(', ')}${slots.length > 12 ? '…' : ''}</p>` : ''}
   </div>`;
 }
@@ -84,6 +84,7 @@ export function render(ctx) {
     <section class="card" id="section-reminders" aria-labelledby="h-reminders">
       <h2 id="h-reminders"><span aria-hidden="true">🔔</span> Reminder settings</h2>
       ${sw('rs-enabled', 'Gratitude reminders', rs.enabled, { desc: 'Same as the bell on the Home screen.' })}
+      ${sw('rs-quiet', 'Vibrate only (quiet mode)', rs.quiet, { desc: 'For work or school: no sound, just a vibration. Pause and give thanks silently in your heart.' + (vibrationSupported() ? '' : ' This device can’t vibrate, so reminders arrive silently.') })}
       ${previewHtml(rs)}
       ${rs.enabled
         ? `<div class="pause-box">
@@ -164,7 +165,7 @@ export function render(ctx) {
 
       <fieldset class="group">
         <legend class="field-label">Notification style</legend>
-        ${sw('rs-sound', 'Notification sound', rs.sound)}
+        ${sw('rs-sound', 'Notification sound', rs.sound && !rs.quiet, { desc: rs.quiet ? 'Off while vibrate-only mode is on.' : '', disabled: rs.quiet })}
         ${sw('rs-vibration', 'Vibration', rs.vibration, { desc: vibrationSupported() ? 'On supported phones.' : 'Not supported on this device.', disabled: !vibrationSupported() })}
       </fieldset>
       ${permissionHtml()}
@@ -338,6 +339,10 @@ export function mount(root, ctx, params) {
     })
   );
   root.querySelector('#rs-weekend')?.addEventListener('change', (ev) => applyReminders({ weekendDifferent: ev.target.checked }));
+  root.querySelector('#rs-quiet').addEventListener('change', (ev) => {
+    store.updateReminders(ev.target.checked ? { quiet: true, vibration: true } : { quiet: false });
+    toast(ev.target.checked ? 'Vibrate only. Give thanks silently in your heart.' : 'Sound back on.');
+  });
   root.querySelector('#rs-sound').addEventListener('change', (ev) => store.updateReminders({ sound: ev.target.checked }));
   root.querySelector('#rs-vibration').addEventListener('change', (ev) => store.updateReminders({ vibration: ev.target.checked }));
   root.querySelector('#rs-defaults').addEventListener('click', async () => {

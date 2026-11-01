@@ -138,16 +138,20 @@ const ctx = {
 // ---------- reminders ----------
 const banner = document.getElementById('reminder-banner');
 function showReminderBanner() {
+  const quiet = Boolean(store.state.reminderSettings.quiet);
   banner.innerHTML = `<div class="reminder-banner-card" role="alertdialog" aria-labelledby="rb-title" aria-describedby="rb-body">
-      <p id="rb-title" class="rb-title">A little gratitude moment 💛</p>
-      <p id="rb-body" class="rb-body">Take a few seconds. What is one thing you're grateful for right now?</p>
+      <p id="rb-title" class="rb-title">${quiet ? 'A quiet gratitude moment 📳' : 'A little gratitude moment 💛'}</p>
+      <p id="rb-body" class="rb-body">${quiet
+        ? 'No need to type. Pause, think of one thing you’re grateful for, and say thank you silently in your heart.'
+        : 'Take a few seconds. What is one thing you’re grateful for right now?'}</p>
       <div class="rb-actions">
-        <button type="button" class="btn btn-primary" data-rb="write">Write it now</button>
+        ${quiet ? '<button type="button" class="btn btn-primary" data-rb="heart">🤍 I said it in my heart</button>' : ''}
+        <button type="button" class="btn ${quiet ? 'btn-ghost-light' : 'btn-primary'}" data-rb="write">Write it now</button>
         <button type="button" class="btn btn-ghost-light" data-rb="dismiss">Not now</button>
       </div>
     </div>`;
   banner.hidden = false;
-  banner.querySelector('[data-rb="write"]').focus();
+  banner.querySelector('.btn').focus();
 }
 banner.addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-rb]');
@@ -155,6 +159,10 @@ banner.addEventListener('click', (ev) => {
   banner.hidden = true;
   banner.innerHTML = '';
   if (b.dataset.rb === 'write') navigate('#/home?focus=1');
+  if (b.dataset.rb === 'heart') {
+    store.addEntry({ text: 'Gave thanks silently in my heart', source: 'heart', inferTheme: false });
+    toast('A quiet thank-you, counted. 🤍');
+  }
 });
 
 const engine = new ReminderEngine({
