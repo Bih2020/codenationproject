@@ -1,0 +1,18 @@
+# Gladmoment: settings for Apache / LiteSpeed (Hostinger)
+DirectoryIndex index.html
+
+# Make sure WordPress does not take over requests inside this folder
+<IfModule mod_rewrite.c>
+  RewriteEngine Off
+</IfModule>
+
+# Correct file types
+AddType application/manifest+json .webmanifest
+AddType text/javascript .js
+
+# Always fetch the newest service worker and app page so updates arrive
+<IfModule mod_headers.c>
+  <FilesMatch "^(sw\.js|index\.html)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
