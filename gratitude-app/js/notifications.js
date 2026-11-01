@@ -10,6 +10,7 @@
 //   ReminderEngine — ticks every 20s, fires any slot that passed since the last
 //                    tick, and keeps native schedules in sync with settings.
 import { remindersBetween, upcomingReminders } from './schedule.js';
+import { playBell } from './sounds.js';
 
 export const REMINDER_TITLE = 'A little gratitude moment 💛';
 export const REMINDER_BODY = "Take a few seconds. What is one thing you're grateful for right now?";
@@ -110,29 +111,6 @@ export async function syncNativeSchedule(settings, now = new Date()) {
   }
 }
 
-function softChime() {
-  try {
-    const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const notes = [659.25, 880];
-    notes.forEach((f, i) => {
-      const o = ctx.createOscillator();
-      const g = ctx.createGain();
-      o.type = 'sine';
-      o.frequency.value = f;
-      const t = ctx.currentTime + i * 0.18;
-      g.gain.setValueAtTime(0.0001, t);
-      g.gain.exponentialRampToValueAtTime(0.08, t + 0.03);
-      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.6);
-      o.connect(g).connect(ctx.destination);
-      o.start(t);
-      o.stop(t + 0.65);
-    });
-    setTimeout(() => ctx.close(), 1500);
-  } catch { /* audio is optional */ }
-}
-
 export class ReminderEngine {
   /**
    * @param {{ getSettings: () => object, onReminder: (at: Date) => void, now?: () => Date, intervalMs?: number }} opts
@@ -185,7 +163,7 @@ export class ReminderEngine {
       if (!visible) await showWebNotification(s);
     }
     if (visible) {
-      if (s.sound && !s.quiet) softChime();
+      if (s.sound && !s.quiet) playBell(s.bellSound);
       if ((s.vibration || s.quiet) && vibrationSupported()) navigator.vibrate(s.quiet ? [300, 150, 300] : [120, 80, 120]);
     }
     this.onReminder(at, { visible });

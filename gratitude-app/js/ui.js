@@ -2,6 +2,7 @@
 import { categoryLabel, CATEGORIES } from './prompts.js';
 import { moodById, MOODS } from './stats.js';
 import { formatTime } from './dates.js';
+import { drawCard, shareCard, CARD_STYLES } from './sharecard.js';
 
 export function esc(v) {
   return String(v ?? '')
@@ -41,6 +42,8 @@ export const icons = {
   refresh: svg('<path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>'),
   moon: svg('<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'),
   check: svg('<path d="M20 6 9 17l-5-5"/>'),
+  share: svg('<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4"/>'),
+  music: svg('<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>'),
   lock: svg('<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'),
 };
 
@@ -146,6 +149,48 @@ export function bellModeDialog(current, { vibrationSupported = true } = {}) {
     );
     dlg.querySelector('input[name="bell-mode"]:checked')?.focus();
   });
+}
+
+/** Preview a gratitude as a picture card, pick a style, then share or save it. */
+export function shareDialog({ text, date = new Date(), heading }) {
+  let styleId = CARD_STYLES[0].id;
+  const canvas = document.createElement('canvas');
+  const dlg = openDialog(
+    `<div class="dialog-card share-card-dialog">
+      <h2 id="dialog-title">Share as a card</h2>
+      <img class="card-preview" id="card-preview" alt="Preview of your gratitude card">
+      <div class="radio-grid three" role="radiogroup" aria-label="Card style">
+        ${CARD_STYLES.map((c, i) => `<label class="radio-pill" for="card-${c.id}"><input type="radio" name="card-style" id="card-${c.id}" value="${c.id}" ${i === 0 ? 'checked' : ''}><span>${esc(c.label)}</span></label>`).join('')}
+      </div>
+      <p class="muted small">Only this picture is shared, and only when you choose. Your journal stays private.</p>
+      <div class="dialog-actions">
+        <button type="button" class="btn btn-ghost" id="card-cancel">Close</button>
+        <button type="button" class="btn btn-primary" id="card-share">${icons.share} Share</button>
+      </div>
+    </div>`
+  );
+  const preview = dlg.querySelector('#card-preview');
+  const redraw = () => {
+    drawCard(canvas, { text, date, styleId, heading });
+    preview.src = canvas.toDataURL('image/png');
+  };
+  redraw();
+  dlg.querySelectorAll('input[name="card-style"]').forEach((r) =>
+    r.addEventListener('change', () => {
+      styleId = r.value;
+      redraw();
+    })
+  );
+  dlg.querySelector('#card-cancel').addEventListener('click', () => dlg.close('cancel'));
+  dlg.querySelector('#card-share').addEventListener('click', async () => {
+    const result = await shareCard(canvas);
+    if (result === 'downloaded') toast('Card saved to your downloads. Share it from your photos or files.');
+    else if (result === 'shared') toast('Shared. Thank you for spreading a little gladness. 💛');
+    else if (result === 'failed') toast('The card could not be created on this device.');
+    if (result === 'shared' || result === 'downloaded') dlg.close('done');
+  });
+  dlg.querySelector('#card-share').focus();
+  return dlg;
 }
 
 export function categoryOptions(selected, { includeAuto = true } = {}) {
@@ -262,7 +307,10 @@ export function entryCard(e, { showDate = false, compact = false } = {}) {
     ${e.promptUsed && e.source !== 'reflection' ? `<p class="entry-prompt">Prompt: ${esc(e.promptUsed)}</p>` : ''}
     <div class="entry-foot">
       <div class="tags">${meta}</div>
-      ${compact ? '' : `<div class="entry-actions">
+      ${compact ? `<div class="entry-actions">
+        <button type="button" class="icon-btn" data-action="share" data-id="${esc(e.id)}" aria-label="Share this gratitude as a picture card">${icons.share}</button>
+      </div>` : `<div class="entry-actions">
+        <button type="button" class="icon-btn" data-action="share" data-id="${esc(e.id)}" aria-label="Share this gratitude as a picture card">${icons.share}</button>
         <button type="button" class="icon-btn" data-action="edit" data-id="${esc(e.id)}" aria-label="Edit this gratitude">${icons.edit}</button>
         <button type="button" class="icon-btn" data-action="delete" data-id="${esc(e.id)}" aria-label="Delete this gratitude">${icons.trash}</button>
       </div>`}
@@ -283,6 +331,8 @@ export function bindEntryActions(root, store) {
       announce(entry.favourite ? 'Added to favourites' : 'Removed from favourites');
       // re-focus the same button after re-render
       requestAnimationFrame(() => document.querySelector(`button[data-action="fav"][data-id="${CSS.escape(id)}"]`)?.focus());
+    } else if (btn.dataset.action === 'share') {
+      shareDialog({ text: entry.text, date: entry.createdAt });
     } else if (btn.dataset.action === 'edit') {
       const patch = await editEntryDialog(entry);
       if (patch) {

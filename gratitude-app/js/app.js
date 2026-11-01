@@ -10,8 +10,9 @@ import * as favourites from './views/favourites.js';
 import * as settings from './views/settings.js';
 import * as onboarding from './views/onboarding.js';
 import * as reflection from './views/reflection.js';
+import * as challenges from './views/challenges.js';
 
-const ROUTES = { home, journal, insights, week, favourites, settings, onboarding, reflection };
+const ROUTES = { home, journal, insights, week, favourites, settings, onboarding, reflection, challenges };
 const TABS = [
   { id: 'home', label: 'Home', icon: icons.home },
   { id: 'journal', label: 'Journal', icon: icons.book },
@@ -19,7 +20,7 @@ const TABS = [
   { id: 'favourites', label: 'Favourites', icon: icons.heart },
   { id: 'settings', label: 'Settings', icon: icons.settings },
 ];
-const TAB_FOR = { week: 'insights', reflection: 'home' };
+const TAB_FOR = { week: 'insights', reflection: 'home', challenges: 'insights' };
 
 const store = createStore();
 // Expose for debugging/tests only.

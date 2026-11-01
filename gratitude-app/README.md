@@ -55,6 +55,11 @@ The browser tests save screenshots to `tests/e2e/screenshots/`.
 | Weekly summary (count, top themes, most active day, favourites, day-by-day chart, week navigation) | ✅ Works |
 | "A Gratitude From the Past" (your own entries only, favours 1-week, 1, 3 or 6-month and 1-year anniversaries) | ✅ Works |
 | Light, dark and system themes, three text sizes, reduce-motion option | ✅ Works |
+| Bell sounds (singing bowl, chime, wind chimes, piano, harp), made in the app with no audio files | ✅ Works |
+| 1-minute gratitude pause: breathing guide, calm soundscape, link to the Gemrhythm shop (`js/config.js`) | ✅ Works |
+| Shareable gratitude cards (3 styles, 1080×1350) via the phone's share menu, or saved as an image | ✅ Works |
+| Gratitude challenges (7, 21, 30 days); missed days never reset progress | ✅ Works |
+| WordPress plugin with `[gladmoment_landing]` and `[gladmoment_button]` shortcodes | ✅ Works |
 | Save a backup (JSON) or download as a spreadsheet (CSV), restore a backup, delete all history, erase everything | ✅ Works |
 | Offline support through the service worker | ✅ Works |
 

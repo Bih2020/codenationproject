@@ -25,6 +25,7 @@ export function defaultReminderSettings() {
     weekendEnd: '21:00',
     sound: true,
     vibration: true,
+    bellSound: 'bowl', // see sounds.js
     quiet: false, // bell mode "vibrate only": no sound, give thanks silently (work, school)
   };
 }

@@ -1,9 +1,10 @@
 // Service worker: offline app shell + notification click handling.
-const CACHE = 'gladmoment-v2';
+const CACHE = 'gladmoment-v3';
 const SHELL = [
   './', './index.html', './privacy.html', './manifest.webmanifest', './css/styles.css',
   './js/app.js', './js/store.js', './js/schedule.js', './js/stats.js', './js/prompts.js', './js/dates.js',
-  './js/notifications.js', './js/voice.js', './js/ui.js',
+  './js/notifications.js', './js/voice.js', './js/ui.js', './js/config.js', './js/sounds.js',
+  './js/challenges.js', './js/sharecard.js', './js/pause.js', './js/views/challenges.js',
   './js/views/home.js', './js/views/journal.js', './js/views/insights.js', './js/views/week.js',
   './js/views/favourites.js', './js/views/settings.js', './js/views/onboarding.js', './js/views/reflection.js',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',

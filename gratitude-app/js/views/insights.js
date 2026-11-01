@@ -35,6 +35,14 @@ export function render(ctx) {
       </div>
     </section>
 
+    <a class="card week-link challenge-link" href="#/challenges">
+      <div>
+        <h2>Gratitude challenges</h2>
+        <p class="muted">${ctx.store.state.challenge ? 'See your challenge progress' : '7, 21 and 30-day challenges with a new theme each day'}</p>
+      </div>
+      <span class="week-link-arrow" aria-hidden="true">→</span>
+    </a>
+
     <a class="card week-link" href="#/week">
       <div>
         <h2>Your Gratitude Week</h2>

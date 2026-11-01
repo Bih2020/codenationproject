@@ -4,6 +4,7 @@
 import { defaultReminderSettings, reminderRecords } from './schedule.js';
 import { inferCategory } from './prompts.js';
 import { dayKey, parseDayKey } from './dates.js';
+import { startChallenge, recordChallengeDay, challengeById } from './challenges.js';
 
 export const STORAGE_KEY = 'gratitude-moments:v1';
 export const SCHEMA_VERSION = 1;
@@ -42,6 +43,8 @@ export function defaultState(now = new Date()) {
     reminders: [],
     entries: [],
     reflections: [],
+    challenge: null, // active gratitude challenge
+    challengeHistory: [], // finished challenges
     ui: { memoryHiddenOn: null, reflectionDismissedOn: null },
   };
 }
@@ -62,6 +65,8 @@ export function migrate(raw, now = new Date()) {
     reminderSettings: { ...base.reminderSettings, ...(raw.reminderSettings || {}) },
     entries: Array.isArray(raw.entries) ? raw.entries.filter((e) => e && e.id && typeof e.text === 'string') : [],
     reflections: Array.isArray(raw.reflections) ? raw.reflections : [],
+    challenge: raw.challenge && Array.isArray(raw.challenge.completed) ? raw.challenge : null,
+    challengeHistory: Array.isArray(raw.challengeHistory) ? raw.challengeHistory : [],
     ui: { ...base.ui, ...(raw.ui || {}) },
     schemaVersion: SCHEMA_VERSION,
   };
@@ -108,6 +113,17 @@ export function createStore({ storage, now = () => new Date() } = {}) {
   }
 
   const listeners = new Set();
+
+  /** Count a saved gratitude toward the active challenge; archive it when finished. */
+  function noteChallenge(s, entry) {
+    if (!s.challenge) return;
+    s.challenge = recordChallengeDay(s.challenge, entry, now());
+    const c = challengeById(s.challenge.id);
+    if (c && s.challenge.completed.length >= c.days && !s.challenge.finishedOn) {
+      s.challenge.finishedOn = dayKey(now());
+      s.challengeHistory = [...(s.challengeHistory || []), { id: c.id, startedOn: s.challenge.startedOn, finishedOn: s.challenge.finishedOn }];
+    }
+  }
 
   function persist() {
     state.reminders = reminderRecords(state.reminderSettings, state.user.id, now());
@@ -172,6 +188,7 @@ export function createStore({ storage, now = () => new Date() } = {}) {
       commit((s) => {
         s.entries.push(entry);
         sortEntries();
+        noteChallenge(s, entry);
       });
       return entry;
     },
@@ -270,6 +287,7 @@ export function createStore({ storage, now = () => new Date() } = {}) {
               reflectionId: id,
             };
             s.entries.push(created);
+            noteChallenge(s, created);
             entryIds.push(created.id);
           }
         });
@@ -330,10 +348,24 @@ export function createStore({ storage, now = () => new Date() } = {}) {
       });
     },
 
+    startChallenge(id) {
+      commit((s) => {
+        s.challenge = startChallenge(id, now());
+      });
+    },
+
+    leaveChallenge() {
+      commit((s) => {
+        s.challenge = null;
+      });
+    },
+
     deleteAllHistory() {
       commit((s) => {
         s.entries = [];
         s.reflections = [];
+        s.challenge = null;
+        s.challengeHistory = [];
       });
     },
 
@@ -357,6 +389,8 @@ export function createStore({ storage, now = () => new Date() } = {}) {
         reminders: state.reminders,
         entries: state.entries,
         reflections: state.reflections,
+        challenge: state.challenge,
+        challengeHistory: state.challengeHistory,
       };
     },
 

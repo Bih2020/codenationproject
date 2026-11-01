@@ -379,7 +379,7 @@ await t('insights, weekly summary and streaks with seeded history', async () => 
   assert.match(await page.textContent('.streak-big'), /8-day gratitude streak/);
   assert.match(await page.textContent('.milestones'), /7-day streak\s*Reached/);
   await page.waitForTimeout(700); await page.screenshot({ path: `${shots}insights.png`, fullPage: true });
-  await page.click('.week-link');
+  await page.click('a.week-link[href="#/week"]');
   await page.waitForSelector('.week-grid');
   assert.match(await page.textContent('.tile-big'), /6/);
   assert.match(await page.textContent('.tile-peach'), /Tuesday/);
@@ -387,6 +387,67 @@ await t('insights, weekly summary and streaks with seeded history', async () => 
   await page.goto(`${URL_}#/home`);
   await page.waitForSelector('.memory');
   assert.match(await page.textContent('.memory'), /6 months ago/);
+});
+
+await t('challenge: start, daily theme, gentle progress, finish and share', async () => {
+  const page = await newPage({ clock: new Date(2026, 10, 2, 10, 0) });
+  await onboard(page);
+  await page.click('a[href="#/challenges"]');
+  await page.click('[data-start="seven"]');
+  await page.goto(`${URL_}#/home`);
+  await page.waitForSelector('.challenge-home');
+  assert.match(await page.textContent('.challenge-home'), /Day 1 of 7/);
+  await page.click('#use-challenge');
+  assert.ok((await page.textContent('.prompt-context')).length > 5);
+  await saveEntry(page, 'my sister');
+  assert.match(await page.textContent('#save-ack'), /Challenge day 1 of 7 done/);
+  assert.match(await page.textContent('.challenge-home'), /Day 1 done/);
+  for (let d = 2; d <= 7; d++) {
+    await page.evaluate((d) => window.__gratitude.store.addEntry({ text: `day ${d}` }), d);
+    await page.clock.fastForward('24:00:00');
+  }
+  // the last fastForward moved past day 7's save; check state directly
+  const ch = await page.evaluate(() => window.__gratitude.store.state.challenge);
+  assert.ok(ch.completed.length >= 6);
+  await page.evaluate(() => window.__gratitude.store.addEntry({ text: 'final day' }));
+  await page.goto(`${URL_}#/challenges`);
+  await page.waitForSelector('.challenge-active.finished');
+  await page.click('#ch-share');
+  await page.waitForFunction(() => document.getElementById('card-preview')?.naturalWidth === 1080);
+  await page.waitForTimeout(400); await page.screenshot({ path: `${shots}challenge-share.png` });
+  await page.click('#card-cancel');
+  assert.deepEqual(page.errors, []);
+});
+
+await t('share card from an entry, and the gratitude pause', async () => {
+  const page = await newPage({ clock: new Date(2026, 10, 2, 10, 0) });
+  await onboard(page);
+  await saveEntry(page, "I'm grateful for a warm cup of tea with my mum this morning");
+  await page.click('#share-last');
+  await page.waitForFunction(() => document.getElementById('card-preview')?.naturalHeight === 1350);
+  await page.click('label[for="card-sea"]');
+  await page.waitForTimeout(500); await page.screenshot({ path: `${shots}share-card.png` });
+  await page.click('#card-cancel');
+  await page.click('#latest-list [data-action="share"]');
+  await page.waitForSelector('#card-preview');
+  await page.click('#card-cancel');
+  // pause
+  await page.click('#open-pause');
+  await page.waitForSelector('.pause-overlay');
+  assert.match(await page.textContent('#pause-step'), /Breathe/);
+  await page.waitForTimeout(500); await page.screenshot({ path: `${shots}pause.png` });
+  await page.clock.runFor('01:01');
+  await page.waitForSelector('#pause-done:not([hidden])');
+  assert.equal(await page.getAttribute('.pause-music', 'href'), 'https://gemrhythm.com/shop/');
+  await page.click('#pause-write');
+  await page.waitForFunction(() => document.activeElement?.id === 'gratitude-text');
+  assert.equal(await page.$('.pause-overlay'), null);
+  // bell sound choice
+  await page.goto(`${URL_}#/settings`);
+  await page.click('label[for="bell-sound-harp"]');
+  await page.click('[data-play="windchimes"]');
+  assert.equal(await page.evaluate(() => window.__gratitude.store.state.reminderSettings.bellSound), 'harp');
+  assert.deepEqual(page.errors, []);
 });
 
 await t('dark mode and theme switching', async () => {

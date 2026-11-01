@@ -610,3 +610,68 @@ h1[tabindex='-1']:focus, h1[tabindex='-1']:focus-visible { box-shadow: none; out
 .bell-opt-icon { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--surface-2); color: var(--primary-ink); flex: none; }
 .bell-opt-text { display: flex; flex-direction: column; }
 .bell-opt-text span { font-size: 0.88rem; color: var(--muted); }
+
+/* ---------- gratitude pause ---------- */
+.pause-card { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; background: linear-gradient(140deg, var(--teal-soft), var(--surface) 70%); }
+.pause-card-icon { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 16px; background: var(--btn-grad); color: #fff; flex: none; }
+.pause-card-text { flex: 1 1 180px; min-width: 0; }
+.pause-card-text h2 { margin: 0 0 2px; }
+.pause-card-text p { margin: 0; }
+body.no-scroll { overflow: hidden; }
+.pause-overlay {
+  position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; color: #fff; text-align: center;
+  background: radial-gradient(circle at 50% 35%, #6a3fc9 0%, #3a2280 45%, #1b1240 100%);
+  padding: calc(24px + env(safe-area-inset-top)) 20px calc(24px + env(safe-area-inset-bottom));
+  animation: fade-in 0.6s ease both;
+}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.pause-inner { max-width: 440px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
+.pause-title { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; margin: 0; }
+.breath { position: relative; width: 200px; height: 200px; display: grid; place-items: center; }
+.breath-ring, .breath-core { position: absolute; border-radius: 50%; }
+.breath-ring { inset: 0; border: 2px solid rgba(255, 255, 255, 0.35); animation: breathe 10s ease-in-out infinite; }
+.breath-core { width: 110px; height: 110px; background: radial-gradient(circle at 35% 30%, #ffe3a3, #f2a35e 60%, #e0617f); box-shadow: 0 0 60px rgba(255, 190, 120, 0.6); animation: breathe 10s ease-in-out infinite; }
+.breath.still .breath-ring, .breath.still .breath-core { animation: none; }
+@keyframes breathe { 0%, 100% { transform: scale(0.72); } 40% { transform: scale(1.12); } 55% { transform: scale(1.12); } }
+.pause-step { font-size: 1.2rem; line-height: 1.5; min-height: 3em; margin: 0; }
+.pause-time { font-variant-numeric: tabular-nums; opacity: 0.8; margin: 0; font-weight: 700; }
+.pause-actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+.pause-done { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.btn-light { background: #fff; color: #4a27a8; }
+.pause-music { color: #ffe3a3; font-weight: 700; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; }
+.pause-music:hover { text-decoration: underline; }
+.pause-overlay :focus-visible { box-shadow: 0 0 0 3px #1b1240, 0 0 0 6px #ffe3a3; }
+
+/* ---------- share cards ---------- */
+.share-after { margin: 4px auto 0; display: flex; }
+.share-card-dialog { display: flex; flex-direction: column; gap: 12px; }
+.card-preview { width: 100%; max-width: 320px; aspect-ratio: 1080 / 1350; height: auto; align-self: center; border-radius: 18px; box-shadow: var(--shadow); background: var(--surface-2); }
+
+/* ---------- challenges ---------- */
+.eyebrow { font-size: 0.78rem; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 0 0 6px; }
+.section-title { font-size: 1.1rem; margin: 6px 4px 0; }
+.challenge-list { display: flex; flex-direction: column; gap: 12px; }
+.challenge-option { display: flex; gap: 16px; align-items: flex-start; }
+.challenge-option h3 { margin: 0 0 4px; font-size: 1.1rem; }
+.challenge-badge { flex: none; width: 64px; height: 64px; border-radius: 20px; display: grid; place-items: center; font-size: 1.6rem; position: relative; background: linear-gradient(140deg, var(--primary-soft), var(--pink-soft)); }
+.challenge-badge span { position: absolute; right: -6px; bottom: -6px; font-size: 0.75rem; font-weight: 800; background: var(--btn-grad); color: #fff; border-radius: 999px; padding: 2px 8px; }
+.challenge-bar { height: 10px; border-radius: 10px; background: var(--surface-2); overflow: hidden; margin: 8px 0 6px; }
+.challenge-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #8a5cff, #ff9f8a, #ffd66b); }
+.challenge-prompt { font-family: var(--font-display); font-size: 1.2rem; line-height: 1.4; margin: 8px 0 12px; }
+.challenge-today { background: var(--surface-2); border-radius: 16px; padding: 14px; margin: 10px 0; }
+.challenge-home { background: linear-gradient(140deg, var(--yellow-soft), var(--surface) 70%); }
+.challenge-active.finished { background: linear-gradient(140deg, var(--yellow-soft), var(--pink-soft)); }
+.challenge-dots { list-style: none; padding: 0; margin: 10px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(34px, 1fr)); gap: 6px; }
+.challenge-dots li { display: grid; place-items: center; height: 34px; border-radius: 10px; background: var(--surface-2); color: var(--muted); font-size: 0.8rem; font-weight: 700; }
+.challenge-dots li.done { background: var(--btn-grad); color: #fff; }
+.challenge-dots li.next { outline: 2px dashed var(--primary); outline-offset: -2px; color: var(--primary-ink); }
+.challenge-link { background: linear-gradient(130deg, var(--yellow-soft), var(--teal-soft)); }
+.plain-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+
+/* ---------- bell sounds ---------- */
+.sound-list { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 8px; }
+.sound-row { display: flex; align-items: center; gap: 8px; }
+.sound-pill { flex: 1; justify-content: flex-start; text-align: left; }
+.sound-pill span { display: flex; flex-direction: column; }
+.sound-pill small { color: var(--muted); font-weight: 500; }
+.play-btn { background: var(--primary-soft); color: var(--primary-ink); font-size: 0.95rem; }

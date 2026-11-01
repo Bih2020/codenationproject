@@ -5,6 +5,7 @@ import { notificationSupport, requestNotificationPermission, vibrationSupported,
 import { CATEGORIES } from '../prompts.js';
 import { formatTime, WEEKDAYS_SHORT, WEEKDAYS_LONG, dayKey, addDays, startOfDay } from '../dates.js';
 import { entriesToCsv } from '../store.js';
+import { BELL_SOUNDS, playBell } from '../sounds.js';
 import { describeNext } from './home.js';
 
 let reminderError = '';
@@ -166,6 +167,19 @@ export function render(ctx) {
       <fieldset class="group">
         <legend class="field-label">Notification style</legend>
         ${sw('rs-sound', 'Notification sound', rs.sound && !rs.quiet, { desc: rs.quiet ? 'Off while vibrate-only mode is on.' : '', disabled: rs.quiet })}
+        <fieldset class="group">
+          <legend class="field-label">Bell sound</legend>
+          <p class="muted small">Plays in the app when a reminder arrives. Tap ▶ to listen.</p>
+          <ul class="sound-list">
+            ${BELL_SOUNDS.map((b) => `<li class="sound-row">
+              <label class="radio-pill sound-pill" for="bell-sound-${b.id}">
+                <input type="radio" name="bell-sound" id="bell-sound-${b.id}" value="${b.id}" ${(rs.bellSound || 'bowl') === b.id ? 'checked' : ''}>
+                <span><strong>${esc(b.label)}</strong><small>${esc(b.desc)}</small></span>
+              </label>
+              <button type="button" class="icon-btn play-btn" data-play="${b.id}" aria-label="Play ${esc(b.label)}">▶</button>
+            </li>`).join('')}
+          </ul>
+        </fieldset>
         ${sw('rs-vibration', 'Vibration', rs.vibration, { desc: vibrationSupported() ? 'On supported phones.' : 'Not supported on this device.', disabled: !vibrationSupported() })}
       </fieldset>
       ${permissionHtml()}
@@ -344,6 +358,13 @@ export function mount(root, ctx, params) {
     store.updateReminders(ev.target.checked ? { quiet: true, vibration: true } : { quiet: false });
     toast(ev.target.checked ? 'Vibrate only. Give thanks silently in your heart.' : 'Sound back on.');
   });
+  root.querySelectorAll('input[name="bell-sound"]').forEach((r) =>
+    r.addEventListener('change', () => {
+      store.updateReminders({ bellSound: r.value });
+      playBell(r.value);
+    })
+  );
+  root.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => playBell(b.dataset.play)));
   root.querySelector('#rs-sound').addEventListener('change', (ev) => store.updateReminders({ sound: ev.target.checked }));
   root.querySelector('#rs-vibration').addEventListener('change', (ev) => store.updateReminders({ vibration: ev.target.checked }));
   root.querySelector('#rs-defaults').addEventListener('click', async () => {

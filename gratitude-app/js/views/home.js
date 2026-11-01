@@ -1,6 +1,9 @@
 // Home: header with greeting + bell, the gratitude composer, inspiration,
 // today's progress, a memory from the past and the evening reflection nudge.
-import { esc, icons, entryCard, bindEntryActions, moodPicker, makeMoodDeselectable, categoryOptions, toast, announce, bellModeDialog } from '../ui.js';
+import { esc, icons, entryCard, bindEntryActions, moodPicker, makeMoodDeselectable, categoryOptions, toast, announce, bellModeDialog, shareDialog } from '../ui.js';
+import { challengeProgress } from '../challenges.js';
+import { openPause } from '../pause.js';
+import { BRAND } from '../config.js';
 import { CATEGORIES, QUICK_CHIPS, pickPrompt, POSITIVE_MESSAGES, SAVE_ACKNOWLEDGEMENTS, wordIdeasFor, addIdea } from '../prompts.js';
 import { nextReminder, isPaused, pauseEnd, bellMode, bellModePatch } from '../schedule.js';
 import { vibrationSupported } from '../notifications.js';
@@ -20,6 +23,7 @@ let listening = false;
 let interim = '';
 let voiceMessage = '';
 let ack = '';
+let lastSaved = null; // { text, date } offered for sharing right after saving
 let ackTimer = null;
 
 function loadDraft() {
@@ -279,6 +283,18 @@ export function render(ctx) {
       <button type="button" class="btn btn-primary btn-xl ${draft.text.trim() ? '' : 'is-empty'}" id="save-btn">Save Gratitude</button>
       <button type="button" class="btn btn-ghost heart-btn" id="heart-btn"><span aria-hidden="true">🤍</span> I said it in my heart</button>
       <p class="save-ack ${ack ? 'show' : ''}" id="save-ack" role="status" aria-live="polite">${esc(ack)}</p>
+      ${ack && lastSaved ? `<button type="button" class="btn btn-soft small share-after" id="share-last">${icons.share} Share as a card</button>` : ''}
+    </section>
+
+    ${challengeHtml(ctx)}
+
+    <section class="card pause-card" aria-labelledby="pause-card-title">
+      <div class="pause-card-icon" aria-hidden="true">${icons.music}</div>
+      <div class="pause-card-text">
+        <h2 id="pause-card-title">1-minute gratitude pause</h2>
+        <p class="muted small">Breathe with calming ${esc(BRAND.siteName)} sounds, then notice one good thing.</p>
+      </div>
+      <button type="button" class="btn btn-primary" id="open-pause">Begin</button>
     </section>
 
     ${reflectionDue ? `<section class="card reflect-nudge" aria-labelledby="reflect-nudge-title">
@@ -321,6 +337,7 @@ export function render(ctx) {
       </div>
       ${s.streak === 0 ? '<p class="encourage">Today is another opportunity to begin. 🌱</p>' : s.today === 0 ? '<p class="encourage">Add one gratitude today to keep your rhythm going.</p>' : ''}
       ${latest ? `<h3 class="sub-title">Most recent</h3><div class="entry-list" id="latest-list">${entryCard(latest, { showDate: dayKey(latest.createdAt) !== dayKey(now), compact: true })}</div>` : '<p class="muted">Your first gratitude will appear here.</p>'}
+      ${state.challenge ? '' : '<p class="small"><a class="link" href="#/challenges">✨ Try a 7-day gratitude challenge</a></p>'}
       ${ctx.store.reflectionFor(dayKey(now)) ? '<p class="muted small">🌙 Today’s reflection is saved. <a class="link" href="#/reflection">Edit it</a></p>' : `<p class="small"><a class="link" href="#/reflection">🌙 Write today’s three-gratitude reflection</a></p>`}
     </section>
 
@@ -389,6 +406,7 @@ export function mount(root, ctx, params) {
     }
     if (listening) voice?.stop();
     const before = milestoneStatus(store.state.entries).filter((m) => m.achieved).map((m) => m.id);
+    const challengeWasFinished = Boolean(challengeProgress(store.state.challenge)?.finished);
     store.addEntry({
       text,
       category: draft.category || null,
@@ -397,15 +415,22 @@ export function mount(root, ctx, params) {
       promptUsed: draft.promptUsed,
     });
     const reached = milestoneStatus(store.state.entries).find((m) => m.achieved && !before.includes(m.id));
+    const challengeBefore = challengeWasFinished;
+    const cp = challengeProgress(store.state.challenge);
+    lastSaved = { text, date: new Date() };
     resetDraft();
     activeChip = null;
     ack = SAVE_ACKNOWLEDGEMENTS[store.state.entries.length === 1 ? 0 : Math.floor(Math.random() * SAVE_ACKNOWLEDGEMENTS.length)];
     if (reached) ack += ` ${reached.emoji} Milestone: ${reached.label}.`;
+    if (cp?.finished && !challengeBefore) ack += ` 🎉 You completed the ${cp.challenge.title}!`;
+    else if (cp && cp.doneToday) ack += ` Challenge day ${cp.dayNumber} of ${cp.total} done.`;
     clearTimeout(ackTimer);
     ackTimer = setTimeout(() => {
       ack = '';
+      lastSaved = null;
       document.getElementById('save-ack')?.classList.remove('show');
-    }, 6000);
+      document.getElementById('share-last')?.remove();
+    }, 9000);
     ctx.rerender();
     document.getElementById('save-btn')?.focus();
   }
@@ -463,11 +488,63 @@ export function mount(root, ctx, params) {
   const latest = root.querySelector('#latest-list');
   if (latest) bindEntryActions(latest, store);
 
+  root.querySelector('#share-last')?.addEventListener('click', () => lastSaved && shareDialog(lastSaved));
+  root.querySelector('#open-pause').addEventListener('click', () =>
+    openPause({
+      onWrite: () => {
+        const t = document.getElementById('gratitude-text');
+        t?.focus();
+        t?.scrollIntoView({ block: 'center' });
+      },
+    })
+  );
+  root.querySelector('#use-challenge')?.addEventListener('click', () => useChallengePrompt(ctx));
+  if (params.challenge) {
+    history.replaceState(null, '', '#/home');
+    useChallengePrompt(ctx);
+    return;
+  }
+
   if (params.focus) {
     ta.focus({ preventScroll: true });
     root.querySelector('.compose').scrollIntoView({ block: 'center' });
     history.replaceState(null, '', '#/home');
   }
+}
+
+function challengeHtml(ctx) {
+  const p = challengeProgress(ctx.store.state.challenge);
+  if (!p || p.finished) {
+    return p?.finished
+      ? `<section class="card challenge-home"><p class="eyebrow">Challenge complete 🎉</p><h2>${esc(p.challenge.title)}</h2>
+          <a class="btn btn-soft" href="#/challenges">Share it or start another</a></section>`
+      : '';
+  }
+  const cat = CATEGORIES[p.today.category];
+  return `<section class="card challenge-home" aria-labelledby="challenge-home-title">
+    <div class="today-head">
+      <p class="eyebrow" id="challenge-home-title"><span aria-hidden="true">${p.challenge.emoji}</span> ${esc(p.challenge.title)} · Day ${p.dayNumber} of ${p.total}</p>
+      <a class="link small" href="#/challenges">Progress</a>
+    </div>
+    <div class="challenge-bar" aria-hidden="true"><span style="width:${p.percent}%"></span></div>
+    <p class="challenge-prompt"><span aria-hidden="true">${cat.emoji}</span> ${esc(p.today.prompt)}</p>
+    ${p.doneToday
+      ? `<p class="encourage">Day ${p.dayNumber} done ✓ See you tomorrow for day ${p.dayNumber + 1}.</p>`
+      : `<button type="button" class="btn btn-soft" id="use-challenge">Use today’s theme</button>`}
+  </section>`;
+}
+
+function useChallengePrompt(ctx) {
+  const p = challengeProgress(ctx.store.state.challenge);
+  if (!p || p.finished) return;
+  draft.promptUsed = p.today.prompt;
+  draft.promptCategory = p.today.category;
+  draft.category = p.today.category;
+  saveDraft();
+  ctx.rerender();
+  const ta = document.getElementById('gratitude-text');
+  ta?.focus();
+  ta?.scrollIntoView({ block: 'center' });
 }
 
 function usePrompt(ctx) {
