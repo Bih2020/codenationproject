@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en-GB" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Gratitude Moments</title>
+  <meta name="description" content="A gentle, private gratitude reminder and journal. Pause, reflect, express, save — and continue your day.">
+  <meta name="theme-color" content="#5b34c4">
+  <meta name="color-scheme" content="light dark">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Gratitude">
+  <link rel="stylesheet" href="./css/styles.css">
+  <script>
+    // Apply the saved theme before first paint to avoid a flash.
+    try {
+      var s = JSON.parse(localStorage.getItem('gratitude-moments:v1') || 'null');
+      var p = (s && s.user && s.user.preferences) || {};
+      var dark = p.theme === 'dark' || ((!p.theme || p.theme === 'system') && matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      document.documentElement.dataset.textSize = p.textSize || 'normal';
+    } catch (e) {}
+  </script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to main content</a>
+  <p id="storage-warning" class="storage-warning" role="alert" hidden></p>
+  <div class="layout">
+    <nav id="tabbar" class="tabbar" aria-label="Main"></nav>
+    <main id="main" tabindex="-1">
+      <noscript><p class="page">Gratitude Moments needs JavaScript to run.</p></noscript>
+    </main>
+  </div>
+  <div id="reminder-banner" class="reminder-banner" hidden></div>
+  <div id="toast-region" class="toast-region" aria-live="polite"></div>
+  <div id="sr-announcer" class="sr-only" aria-live="polite"></div>
+  <dialog id="dialog" class="dialog"></dialog>
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html>

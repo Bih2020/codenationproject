@@ -1,0 +1,143 @@
+# Gratitude Moments 💛
+
+A colourful, calm, mobile-first app that helps you pause during the day and notice something you're grateful for.
+
+**Pause → Reflect → Express → Save → Continue your day.**
+
+It's an installable Progressive Web App (PWA) written in plain HTML, CSS and JavaScript modules. There's no build step and no third-party runtime dependencies, and it works offline. Your journal stays on your device.
+
+---
+
+## Running it
+
+You need Node.js 18 or newer.
+
+```bash
+cd gratitude-app
+npm start            # → http://localhost:8080
+```
+
+Any static web server works (for example `python3 -m http.server 8080`). The app has to be served over `http://localhost` or `https://`. Opening `index.html` straight from the file system won't work, because browsers block ES modules, service workers and notifications on `file://` pages.
+
+**On your phone:** host the folder on any HTTPS static host (GitHub Pages, Netlify and so on), open it, then choose *Add to Home Screen* or *Install app*.
+
+### Tests
+
+```bash
+npm test             # 37 unit tests: scheduling, streaks, weekly stats, storage, prompts
+npm run test:e2e     # 15 browser tests in headless Chromium (needs the `playwright` package)
+```
+
+The browser tests save screenshots to `tests/e2e/screenshots/`.
+
+---
+
+## What's included
+
+| Area | Status |
+|---|---|
+| Onboarding (welcome → frequency → active hours → notification permission → name → done) | ✅ Works |
+| Home: gradient header, date, greeting, daily message, **bell on/off switch**, next reminder, settings | ✅ Works |
+| Gratitude entry: type it or say it, optional theme and mood, Save, gentle acknowledgement, Ctrl/⌘+Enter to save | ✅ Works |
+| Saving to local storage (survives restarts; corrupt data is backed up; warns in private mode) | ✅ Works |
+| "Need inspiration?": 172 prompts in 17 categories, "Give me another prompt", 10 quick-idea chips | ✅ Works |
+| Journal: grouped by day, search, filter by theme, mood, date or favourites, month calendar, edit, delete with undo | ✅ Works |
+| Favourites page and heart toggle | ✅ Works |
+| Reminder settings: 30 min, 1, 2, 3 or 4 hours, custom times, active hours, days of the week, different weekend hours, pause and resume, sound, vibration | ✅ Works |
+| Next reminder shown in the header and in settings | ✅ Works |
+| Reminders while the app is open (in-app banner, soft chime, vibration) | ✅ Works |
+| Device notifications when the app is open in another tab or minimised, with tap-to-open on the entry screen | ✅ Works (once permission is granted) |
+| Device notifications when the app is fully closed | ⚠️ Needs native or push setup (see below) |
+| Voice to text, with a privacy notice and a clear "🎙 Listening…" indicator | ✅ Works in Chrome, Edge and Safari. Firefox shows "type instead" |
+| Mood check-in (optional) and mood insights, with a non-medical disclaimer | ✅ Works |
+| Streaks (no penalty until the day is over), "this week" count, milestones | ✅ Works |
+| Daily reflection (3 gratitudes, "what made today meaningful?", mood), saved to the journal | ✅ Works |
+| Weekly summary (count, top themes, most active day, favourites, day-by-day chart, week navigation) | ✅ Works |
+| "A Gratitude From the Past" (your own entries only, favours 1-week, 1, 3 or 6-month and 1-year anniversaries) | ✅ Works |
+| Light, dark and system themes, three text sizes, reduce-motion option | ✅ Works |
+| Export as JSON or CSV, import a JSON backup, delete all history, erase everything | ✅ Works |
+| Offline support through the service worker | ✅ Works |
+
+---
+
+## How reminders work, and the native integration still needed
+
+The reminder code is split into layers so that how reminders are delivered can change without touching the rest of the app:
+
+```
+js/schedule.js        Pure logic: which times should reminders fire?
+                      (interval or custom times, active hours, days, weekend hours, pause, bell on/off)
+js/notifications.js   Delivery
+   ├─ ReminderEngine  Checks every 20 seconds and fires any reminder time that has just passed
+   ├─ Web adapter     Notification API through the service worker (tapping opens #/home?focus=1)
+   └─ Native adapter  Capacitor LocalNotifications: schedules the next 14 days whenever settings change
+sw.js                 notificationclick → focus or open the app on the entry screen. A `push` handler is ready.
+```
+
+**What works today in a browser:** reminders fire on time while the app is open, whether it's in front, in another tab or minimised as an installed PWA. When the app is visible you get a calm in-app banner. Otherwise you get a system notification. Tapping either one opens the gratitude-entry screen.
+
+**What doesn't work in a plain browser:** a web page can't schedule notifications once it's fully closed. Browsers don't offer an API for that. There are two ways to add it:
+
+1. **Native app (recommended):** wrap the app with [Capacitor](https://capacitorjs.com/):
+   ```bash
+   npm i @capacitor/core @capacitor/cli @capacitor/local-notifications
+   npx cap init "Gratitude Moments" com.example.gratitude --web-dir .
+   npx cap add android && npx cap add ios
+   ```
+   `notifications.js` detects `Capacitor.Plugins.LocalNotifications` automatically. It then schedules the next 60 reminders (up to 14 days ahead) and reschedules whenever settings change. Still to do for this path:
+   - Add a notification icon on Android, plus `SCHEDULE_EXACT_ALARM` if you want exact timing on Android 12+.
+   - Handle `localNotificationActionPerformed` and navigate to `#/home?focus=1`.
+   - Add a microphone usage description on iOS (`NSMicrophoneUsageDescription` and `NSSpeechRecognitionUsageDescription`).
+   - Optionally switch voice input to `@capacitor-community/speech-recognition` so it can work on-device.
+
+   **This adapter has not been tested on a real device yet.**
+2. **Web Push:** needs a small server that stores each user's push subscription and reminder schedule and sends pushes on time. `sw.js` already handles `push` events. Note that this means reminder times (not journal content) would be stored on a server, and that should be disclosed.
+
+---
+
+## Privacy
+
+- **Everything is stored locally** in the browser's storage for this app (key `gratitude-moments:v1`). There's no account and no server, and the app makes no network requests apart from loading its own files.
+- **Voice:** nothing is recorded or stored. Listening only starts when you tap, is always shown on screen, stops when you leave the app, and stops automatically after 90 seconds. Some browsers (including Chrome) send the audio to the browser maker's speech service to turn it into text. The app explains this before the first use.
+- Local storage isn't encrypted. Anyone using the same device and browser profile could open the journal. A passcode lock would be a sensible future feature.
+- The insights are for personal reflection only and make no medical or psychological claims.
+
+---
+
+## Data model
+
+Defined in `js/store.js`:
+
+```text
+User          { id, displayName, createdAt, onboarded,
+                preferences{theme, textSize, reduceMotion, preferredCategories, promptPreference,
+                            askMood, showMemories, eveningReflection, reflectionTime},
+                notificationSettings{permission} }
+ReminderSettings { enabled (bell), pausedUntil, mode: interval|custom, intervalMinutes, customTimes[],
+                activeStart, activeEnd, days[7], weekendDifferent, weekendStart, weekendEnd, sound, vibration }
+Reminder      { id, userId, frequency, scheduledTime, active, selectedDays[] }   (built from the settings)
+GratitudeEntry{ id, userId, text, createdAt, updatedAt, category, categorySource: user|auto,
+                mood, favourite, source: typed|voice|reflection, promptUsed, reflectionId }
+DailyReflection { id, date, entryIds[3], items[3], reflection, mood, createdAt, updatedAt }
+```
+
+## Project structure
+
+```
+index.html, css/styles.css, manifest.webmanifest, sw.js, server.js, icons/
+js/app.js              Starts the app; router, theme, reminder engine, service worker
+js/store.js            Persistent state and actions (add, edit, delete, favourite, reflection, export, import)
+js/schedule.js         Reminder maths (pure functions)
+js/notifications.js    Reminder delivery (web and native adapters)
+js/voice.js            Speech to text
+js/stats.js            Streaks, weekly stats, milestones, moods, memories (pure functions)
+js/prompts.js          Categories, prompt library, theme guessing
+js/ui.js               Escaping, icons, toasts, dialogs, entry card
+js/views/*.js          home, journal, insights, week, favourites, settings, onboarding, reflection
+tests/unit/*.test.mjs  node:test unit tests
+tests/e2e/run.mjs      Playwright browser tests
+```
+
+## Suggested next step
+
+**Wrap the app with Capacitor and test the native adapter on a real iPhone and Android phone.** That's what turns "reminders while the app is open" into dependable reminders across the whole day, which is the core promise of the app. After that, the most valuable additions would be an optional passcode or biometric lock for the journal, and on-device speech recognition.
