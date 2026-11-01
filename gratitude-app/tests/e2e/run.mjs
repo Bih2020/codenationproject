@@ -194,6 +194,10 @@ await t('bell menu: sound, vibrate only (quiet) and off', async () => {
   const pick = async (mode) => {
     await page.click('#bell-toggle');
     await page.click(`label[for="bell-${mode}"]`);
+    await page.waitForFunction((m) => {
+      const r = window.__gratitude.store.state.reminderSettings;
+      return m === 'off' ? !r.enabled : r.enabled && Boolean(r.quiet) === (m === 'quiet');
+    }, mode, { timeout: 5000 });
     await page.waitForSelector('#dialog:not([open])', { state: 'attached' });
   };
   await pick('quiet');
