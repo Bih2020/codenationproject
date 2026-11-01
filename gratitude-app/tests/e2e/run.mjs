@@ -23,8 +23,8 @@ let passed = 0;
 let failed = 0;
 const results = [];
 
-async function newPage({ permissions = [], speech = null, dark = false, viewport = { width: 390, height: 844 }, clock = null, locale = 'en-GB' } = {}) {
-  const context = await browser.newContext({ viewport, permissions, colorScheme: dark ? 'dark' : 'light', locale, deviceScaleFactor: 1 });
+async function newPage({ permissions = [], speech = null, dark = false, viewport = { width: 390, height: 844 }, clock = null, locale = 'en-GB', userAgent } = {}) {
+  const context = await browser.newContext({ viewport, permissions, colorScheme: dark ? 'dark' : 'light', locale, deviceScaleFactor: 1, ...(userAgent ? { userAgent } : {}) });
   const page = await context.newPage();
   page.errors = [];
   page.on('pageerror', (e) => page.errors.push(e.message));
@@ -515,6 +515,54 @@ await t('language choice on the English welcome screen', async () => {
   assert.match(await page.textContent('.ob-title'), /Bienvenue/);
   await page.click('[data-lang="en"]');
   assert.match(await page.textContent('.ob-title'), /Welcome/);
+});
+
+await t('home-screen guide (iPhone steps), backup reminder, link-preview tags', async () => {
+  const IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1';
+  const page = await newPage({ userAgent: IPHONE, clock: new Date(2026, 10, 30, 10, 0) });
+  // link previews
+  await page.goto(URL_);
+  assert.equal(await page.getAttribute('meta[property="og:image"]', 'content'), 'https://gemrhythm.com/gladmoment/icons/og-image.png');
+  assert.match(await page.getAttribute('meta[property="og:title"]', 'content'), /Gladmoment/);
+  const img = await page.request.get(`${URL_}icons/og-image.png`);
+  assert.equal(img.status(), 200);
+  await onboard(page);
+  assert.equal(await page.$('.install-nudge'), null, 'not before the first gratitude');
+  await saveEntry(page, 'my morning walk');
+  await page.waitForSelector('.install-nudge');
+  assert.match(await page.textContent('.install-nudge'), /Add to Home Screen/);
+  await page.click('#install-dismiss');
+  await page.waitForFunction(() => !document.querySelector('.install-nudge'));
+  await page.reload();
+  await page.waitForSelector('#gratitude-text');
+  assert.equal(await page.$('.install-nudge'), null, 'stays dismissed');
+  // backup reminder appears for an older journal
+  assert.equal(await page.$('.backup-nudge'), null);
+  await page.evaluate(() => {
+    for (let i = 0; i < 6; i++) window.__gratitude.store.addEntry({ text: `old ${i}`, createdAt: new Date(2026, 9, 1 + i).toISOString() });
+  });
+  await page.waitForSelector('.backup-nudge');
+  await page.click('#backup-later');
+  await page.waitForFunction(() => !document.querySelector('.backup-nudge'));
+  await page.clock.fastForward(8 * 24 * 3600 * 1000); // 8 days later
+  await page.goto(`${URL_}#/journal`);
+  await page.goto(`${URL_}#/home`);
+  await page.waitForSelector('.backup-nudge');
+  const dl = page.waitForEvent('download');
+  await page.click('#backup-now');
+  assert.match((await dl).suggestedFilename(), /^gladmoment-.*\.json$/);
+  await page.waitForFunction(() => !document.querySelector('.backup-nudge'));
+  assert.deepEqual(page.errors, []);
+});
+
+await t('home-screen guide in French on Android', async () => {
+  const ANDROID = 'Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36';
+  const page = await newPage({ userAgent: ANDROID, locale: 'fr-FR' });
+  await onboard(page);
+  await saveEntry(page, 'le soleil');
+  await page.waitForSelector('.install-nudge');
+  assert.match(await page.textContent('.install-nudge'), /Ajoutez Gladmoment à votre écran d’accueil/);
+  assert.match(await page.textContent('.install-nudge'), /Installer l’application/);
 });
 
 await t('dark mode and theme switching', async () => {

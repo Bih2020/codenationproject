@@ -1,9 +1,10 @@
 // Home: header with greeting + bell, the gratitude composer, inspiration,
 // today's progress, a memory from the past and the evening reflection nudge.
-import { esc, icons, entryCard, bindEntryActions, moodPicker, makeMoodDeselectable, categoryOptions, toast, announce, bellModeDialog, shareDialog } from '../ui.js';
+import { esc, icons, entryCard, bindEntryActions, moodPicker, makeMoodDeselectable, categoryOptions, toast, announce, bellModeDialog, shareDialog, downloadFile } from '../ui.js';
 import { challengeProgress } from '../challenges.js';
 import { openPause } from '../pause.js';
 import { BRAND } from '../config.js';
+import { installPlatform, shouldShowInstall, backupDue } from '../nudges.js';
 import { CATEGORIES, QUICK_CHIPS, pickPrompt, POSITIVE_MESSAGES, SAVE_ACKNOWLEDGEMENTS, wordIdeasFor, addIdea, categoryName, chipName } from '../prompts.js';
 import { nextReminder, isPaused, pauseEnd, bellMode, bellModePatch } from '../schedule.js';
 import { vibrationSupported } from '../notifications.js';
@@ -287,6 +288,8 @@ export function render(ctx) {
       ${ack && lastSaved ? `<button type="button" class="btn btn-soft small share-after" id="share-last">${icons.share} ${t('Share as a card')}</button>` : ''}
     </section>
 
+    ${nudgesHtml(ctx)}
+
     ${challengeHtml(ctx)}
 
     <section class="card pause-card" aria-labelledby="pause-card-title">
@@ -500,6 +503,7 @@ export function mount(root, ctx, params) {
     })
   );
   root.querySelector('#use-challenge')?.addEventListener('click', () => useChallengePrompt(ctx));
+  bindNudges(root, ctx);
   if (params.challenge) {
     history.replaceState(null, '', '#/home');
     useChallengePrompt(ctx);
@@ -511,6 +515,68 @@ export function mount(root, ctx, params) {
     root.querySelector('.compose').scrollIntoView({ block: 'center' });
     history.replaceState(null, '', '#/home');
   }
+}
+
+function currentPlatform() {
+  const standalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  return installPlatform({ userAgent: navigator.userAgent, standalone, maxTouchPoints: navigator.maxTouchPoints || 0 });
+}
+
+function nudgesHtml(ctx) {
+  const { state } = ctx.store;
+  const ui = state.ui;
+  let out = '';
+  if (backupDue({ entries: state.entries, lastBackupAt: ui.lastBackupAt, snoozedAt: ui.backupSnoozedAt })) {
+    out += `<section class="card nudge backup-nudge" aria-labelledby="backup-title">
+      <h2 id="backup-title"><span aria-hidden="true">💾</span> ${t('Keep your journal safe')}</h2>
+      <p class="muted small">${t('Your entries live only on this phone. Save a backup now and then, so a lost or new phone never means lost memories.')}</p>
+      <div class="row wrap">
+        <button type="button" class="btn btn-primary small" id="backup-now">${t('Save a backup')}</button>
+        <button type="button" class="btn btn-ghost small" id="backup-later">${t('Later')}</button>
+      </div>
+    </section>`;
+  }
+  const platform = currentPlatform();
+  if (shouldShowInstall({ platform, entriesCount: state.entries.length, dismissed: ui.installDismissed })) {
+    const canPrompt = Boolean(globalThis.__gmInstallPrompt);
+    const steps = {
+      ios: [t('Tap the Share button (the square with an arrow) at the bottom of Safari.'), t('Choose “Add to Home Screen”.'), t('Tap “Add”.')],
+      android: [t('Tap the ⋮ menu at the top right of Chrome.'), t('Choose “Install app” or “Add to Home screen”.'), t('Tap “Install”.')],
+      desktop: [t('In Chrome or Edge, click the install icon at the right of the address bar.'), t('Choose “Install”.')],
+    }[platform];
+    out += `<section class="card nudge install-nudge" aria-labelledby="install-title">
+      <h2 id="install-title"><span aria-hidden="true">📲</span> ${t('Add Gladmoment to your home screen')}</h2>
+      <p class="muted small">${t('It opens like an app, works offline, and reminders work better.')}</p>
+      ${canPrompt
+        ? `<button type="button" class="btn btn-primary small" id="install-now">${t('Install Gladmoment')}</button>`
+        : `<ol class="install-steps">${steps.map((s) => `<li>${esc(s)}</li>`).join('')}</ol>`}
+      <button type="button" class="link-btn" id="install-dismiss">${t('Don’t show this again')}</button>
+    </section>`;
+  }
+  return out;
+}
+
+function bindNudges(root, ctx) {
+  const { store } = ctx;
+  root.querySelector('#backup-now')?.addEventListener('click', () => {
+    const stamp = dayKey(new Date());
+    downloadFile(`gladmoment-${stamp}.json`, JSON.stringify(store.exportData(), null, 2), 'application/json');
+    store.updateUi({ lastBackupAt: new Date().toISOString(), backupSnoozedAt: null });
+    toast(t('Backup saved to your downloads. Keep it somewhere private.'));
+  });
+  root.querySelector('#backup-later')?.addEventListener('click', () => {
+    store.updateUi({ backupSnoozedAt: new Date().toISOString() });
+  });
+  root.querySelector('#install-now')?.addEventListener('click', async () => {
+    const ev = globalThis.__gmInstallPrompt;
+    if (!ev) return;
+    ev.prompt();
+    const choice = await ev.userChoice.catch(() => null);
+    globalThis.__gmInstallPrompt = null;
+    if (choice?.outcome === 'accepted') store.updateUi({ installDismissed: true });
+    else ctx.rerender();
+  });
+  root.querySelector('#install-dismiss')?.addEventListener('click', () => store.updateUi({ installDismissed: true }));
 }
 
 function challengeHtml(ctx) {

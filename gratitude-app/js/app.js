@@ -184,6 +184,17 @@ setInterval(() => {
   if (current.name === 'home' && !document.querySelector('#gratitude-text:focus')) home.refreshHeader?.(main, ctx);
 }, 30000);
 
+// ---------- install prompt (Android / desktop Chrome) ----------
+window.addEventListener('beforeinstallprompt', (ev) => {
+  ev.preventDefault();
+  globalThis.__gmInstallPrompt = ev;
+  if (current.name === 'home') render();
+});
+window.addEventListener('appinstalled', () => {
+  globalThis.__gmInstallPrompt = null;
+  if (store.state.user.onboarded) store.updateUi({ installDismissed: true });
+});
+
 // ---------- service worker ----------
 if ('serviceWorker' in navigator && location.protocol !== 'file:') {
   navigator.serviceWorker.register('./sw.js').catch((err) => console.warn('Service worker registration failed', err));

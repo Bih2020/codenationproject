@@ -61,6 +61,9 @@ The browser tests save screenshots to `tests/e2e/screenshots/`.
 | Gratitude challenges (7, 21, 30 days); missed days never reset progress | ✅ Works |
 | WordPress plugin with `[gladmoment_landing]` and `[gladmoment_button]` shortcodes | ✅ Works |
 | English and French: follows the phone's language automatically, with a choice on the welcome screen and in Settings → Language; voice input, dates, themes, privacy page and landing page all translated | ✅ Works |
+| "Add to home screen" guide (iPhone, Android and computer steps, or a one-tap Install button where the browser allows), shown after the first gratitude and dismissible | ✅ Works |
+| Monthly "save a backup" reminder once there are 5+ entries (snoozes for a week) | ✅ Works |
+| Link previews for Facebook, WhatsApp, TikTok and X (`icons/og-image.png`, tags in `index.html`) | ✅ Works |
 | Save a backup (JSON) or download as a spreadsheet (CSV), restore a backup, delete all history, erase everything | ✅ Works |
 | Offline support through the service worker | ✅ Works |
 

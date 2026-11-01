@@ -259,7 +259,7 @@ export function render(ctx) {
       <p class="muted small">${t('No account is used, so there is no online account to delete.')} <a class="link" href="./${getLanguage() === 'fr' ? 'privacy-fr.html' : 'privacy.html'}" target="_blank" rel="noopener">${t('Read the privacy policy')}</a></p>
     </section>
 
-    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.3' })}</p>
+    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.4' })}</p>
   </div>`;
 }
 
@@ -424,6 +424,7 @@ export function mount(root, ctx, params) {
   const stamp = dayKey(new Date());
   root.querySelector('#export-json').addEventListener('click', () => {
     downloadFile(`gladmoment-${stamp}.json`, JSON.stringify(store.exportData(), null, 2), 'application/json');
+    store.updateUi({ lastBackupAt: new Date().toISOString(), backupSnoozedAt: null });
     toast(t('Backup saved to your downloads. Keep it somewhere private.'));
   });
   root.querySelector('#export-csv').addEventListener('click', () => {

@@ -46,7 +46,7 @@ export function defaultState(now = new Date()) {
     reflections: [],
     challenge: null, // active gratitude challenge
     challengeHistory: [], // finished challenges
-    ui: { memoryHiddenOn: null, reflectionDismissedOn: null },
+    ui: { memoryHiddenOn: null, reflectionDismissedOn: null, installDismissed: false, lastBackupAt: null, backupSnoozedAt: null },
   };
 }
 
