@@ -159,7 +159,7 @@ and extract it. Purge LiteSpeed Cache after each update.
    Program (yearly fee). Apple rejects apps that are only a website in a wrapper, so add native
    notifications (see above) before submitting.
 
-Before launch: add your contact email to `privacy.html`, test on real phones, and check that the
+Before launch: test on real phones, and check that the
 name is free in the app stores and the trade mark register.
 
 ## Suggested next step
