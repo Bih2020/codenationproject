@@ -48,6 +48,8 @@ zip(pause.PAUSE_STEPS, FR.PAUSE_STEPS, 'pause steps');
 zip(sounds.BELL_SOUNDS.map((b) => b.label), FR.BELL_SOUNDS.map((b) => b.label), 'bell labels');
 zip(sounds.BELL_SOUNDS.map((b) => b.desc), FR.BELL_SOUNDS.map((b) => b.desc), 'bell descriptions');
 zip(card.CARD_STYLES.map((c) => c.label), FR.CARD_STYLES, 'card styles');
+zip(sounds.BELL_VOLUMES.map((v) => v.label), FR.BELL_VOLUMES, 'bell volumes');
+zip(sounds.BELL_REPEATS.map((r) => r.label), FR.BELL_REPEATS, 'bell repeats');
 zip(sched.FREQUENCY_OPTIONS.map((o) => o.label), FR.FREQUENCY.map((o) => o.label), 'frequency');
 zip(sched.FREQUENCY_OPTIONS.map((o) => o.short), FR.FREQUENCY.map((o) => o.short), 'frequency short');
 for (const [en, fr] of Object.entries(FR.MESSAGES)) put(en, fr, 'messages');

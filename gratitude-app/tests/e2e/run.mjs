@@ -565,6 +565,34 @@ await t('home-screen guide in French on Android', async () => {
   assert.match(await page.textContent('.install-nudge'), /Installer l’application/);
 });
 
+await t('bell: rings 3 times by default, "until I respond" stops when tapped, volume setting', async () => {
+  const page = await newPage({ clock: new Date(2026, 10, 2, 13, 59, 0) });
+  await onboard(page);
+  assert.equal(await page.evaluate(() => window.__gratitude.store.state.reminderSettings.bellRepeat), 'three');
+  assert.equal(await page.evaluate(() => window.__gratitude.store.state.reminderSettings.bellVolume), 'loud');
+  await page.evaluate(() => { window.__gmBellPlays = 0; });
+  await page.clock.runFor('01:15'); // reminder at 14:00, then two more rings 4 seconds apart
+  await page.waitForSelector('.reminder-banner-card');
+  await page.clock.runFor(20000);
+  assert.equal(await page.evaluate(() => window.__gmBellPlays), 3);
+  await page.click('[data-rb="dismiss"]');
+  // "Until I respond" keeps ringing until the reminder is tapped
+  await page.goto(`${URL_}#/settings`);
+  await page.click('label[for="bell-repeat-until"]');
+  await page.click('label[for="bell-volume-medium"]');
+  assert.equal(await page.evaluate(() => window.__gratitude.store.state.reminderSettings.bellVolume), 'medium');
+  await page.evaluate(() => { window.__gmBellPlays = 0; });
+  await page.click('#test-reminder');
+  await page.waitForSelector('.reminder-banner-card');
+  await page.clock.runFor(16500);
+  const before = await page.evaluate(() => window.__gmBellPlays);
+  assert.ok(before >= 5, `rang ${before} times`);
+  await page.click('[data-rb="dismiss"]');
+  await page.clock.runFor(20000);
+  assert.equal(await page.evaluate(() => window.__gmBellPlays), before, 'stopped after tapping');
+  assert.deepEqual(page.errors, []);
+});
+
 await t('dark mode and theme switching', async () => {
   const page = await newPage({ dark: true });
   await onboard(page);

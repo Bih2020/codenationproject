@@ -2,6 +2,7 @@
 // Web Audio API (no audio files needed). Each sound is short and soft.
 
 let ctx = null;
+let bus = null; // where bell tones go while a bell is playing (volume + limiter)
 function audio() {
   const Ctx = globalThis.AudioContext || globalThis.webkitAudioContext;
   if (!Ctx) return null;
@@ -10,7 +11,7 @@ function audio() {
   return ctx;
 }
 
-function tone(ac, { freq, start = 0, dur = 1.5, peak = 0.12, type = 'sine', attack = 0.01, out = ac.destination }) {
+function tone(ac, { freq, start = 0, dur = 1.5, peak = 0.12, type = 'sine', attack = 0.01, out = bus || ac.destination }) {
   const o = ac.createOscillator();
   const g = ac.createGain();
   o.type = type;
@@ -68,16 +69,80 @@ const PLAYERS = {
   },
 };
 
-/** Play a bell sound by id. Safe to call anywhere; silently does nothing without audio support. */
-export function playBell(id = 'bowl') {
+export const BELL_VOLUMES = [
+  { id: 'soft', label: 'Soft', gain: 1.2 },
+  { id: 'medium', label: 'Medium', gain: 2.6 },
+  { id: 'loud', label: 'Loud', gain: 5 },
+];
+
+export const BELL_REPEATS = [
+  { id: 'once', label: 'Once', times: 1 },
+  { id: 'three', label: '3 times', times: 3 },
+  { id: 'until', label: 'Until I respond', times: 15 }, // about one minute
+];
+
+/** Volume stage with a limiter, so loud bells stay clear instead of distorting. */
+function output(ac, volume) {
+  const gain = ac.createGain();
+  gain.gain.value = (BELL_VOLUMES.find((v) => v.id === volume) || BELL_VOLUMES[2]).gain;
+  const limiter = ac.createDynamicsCompressor();
+  limiter.threshold.value = -8;
+  limiter.knee.value = 4;
+  limiter.ratio.value = 12;
+  limiter.attack.value = 0.002;
+  limiter.release.value = 0.2;
+  gain.connect(limiter).connect(ac.destination);
+  return gain;
+}
+
+/**
+ * Phones keep web audio muted until the person has touched the page.
+ * Call this from any tap so the bell can ring later.
+ */
+export function unlockAudio() {
+  try {
+    const ac = audio();
+    if (ac && ac.state !== 'running') ac.resume().catch(() => {});
+  } catch { /* audio is optional */ }
+}
+
+/** Play a bell sound once. Safe to call anywhere; silently does nothing without audio support. */
+export function playBell(id = 'bowl', { volume = 'loud' } = {}) {
   try {
     const ac = audio();
     if (!ac) return false;
+    bus = output(ac, volume);
     (PLAYERS[id] || PLAYERS.bowl)(ac);
+    bus = null;
+    globalThis.__gmBellPlays = (globalThis.__gmBellPlays || 0) + 1;
     return true;
   } catch {
+    bus = null;
     return false;
   }
+}
+
+/**
+ * Ring the bell several times (about every 4 seconds) until done or stopped.
+ * `onRing` runs with each ring (used for vibration). Returns { stop() }.
+ */
+export function ringBell({ id = 'bowl', volume = 'loud', repeat = 'three', sound = true, onRing } = {}) {
+  const times = (BELL_REPEATS.find((r) => r.id === repeat) || BELL_REPEATS[1]).times;
+  let count = 0;
+  let timer = null;
+  const ring = () => {
+    count++;
+    if (sound) playBell(id, { volume });
+    onRing?.(count);
+    if (count >= times) stop();
+  };
+  function stop() {
+    clearInterval(timer);
+    timer = null;
+  }
+  ring();
+  if (times > 1) timer = setInterval(ring, 4000);
+  return { stop, get ringing() { return Boolean(timer); } };
 }
 
 /**

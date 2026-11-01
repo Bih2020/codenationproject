@@ -3,6 +3,7 @@ import { createStore } from './store.js';
 import { ReminderEngine, notificationSupport } from './notifications.js';
 import { icons, esc, toast } from './ui.js';
 import { t, setLanguage, detectLanguage } from './i18n.js';
+import { unlockAudio } from './sounds.js';
 import * as home from './views/home.js';
 import * as journal from './views/journal.js';
 import * as insights from './views/insights.js';
@@ -162,6 +163,7 @@ function showReminderBanner() {
 banner.addEventListener('click', (ev) => {
   const b = ev.target.closest('[data-rb]');
   if (!b) return;
+  engine.stopRinging();
   banner.hidden = true;
   banner.innerHTML = '';
   if (b.dataset.rb === 'write') navigate('#/home?focus=1');
@@ -183,6 +185,12 @@ const engine = new ReminderEngine({
 setInterval(() => {
   if (current.name === 'home' && !document.querySelector('#gratitude-text:focus')) home.refreshHeader?.(main, ctx);
 }, 30000);
+
+// Phones keep web audio muted until the page is touched: switch it on at the first tap.
+['pointerdown', 'keydown'].forEach((type) => document.addEventListener(type, unlockAudio, { passive: true }));
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') engine.stopRinging();
+});
 
 // ---------- install prompt (Android / desktop Chrome) ----------
 window.addEventListener('beforeinstallprompt', (ev) => {

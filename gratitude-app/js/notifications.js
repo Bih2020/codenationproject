@@ -10,7 +10,7 @@
 //   ReminderEngine — ticks every 20s, fires any slot that passed since the last
 //                    tick, and keeps native schedules in sync with settings.
 import { remindersBetween, upcomingReminders } from './schedule.js';
-import { playBell } from './sounds.js';
+import { ringBell } from './sounds.js';
 import { t } from './i18n.js';
 
 export const REMINDER_TITLE = 'A little gratitude moment 💛';
@@ -163,10 +163,27 @@ export class ReminderEngine {
       // When visible, a calm in-app banner is less intrusive.
       if (!visible) await showWebNotification(s);
     }
-    if (visible) {
-      if (s.sound && !s.quiet) playBell(s.bellSound);
-      if ((s.vibration || s.quiet) && vibrationSupported()) navigator.vibrate(s.quiet ? [300, 150, 300] : [120, 80, 120]);
-    }
+    if (visible) this.ring(s);
     this.onReminder(at, { visible });
+  }
+
+  /** Ring the bell (and vibrate) the way the person chose; stops when they respond. */
+  ring(s = this.getSettings()) {
+    this.stopRinging();
+    const vibrate = (s.vibration || s.quiet) && vibrationSupported();
+    this.ringing = ringBell({
+      id: s.bellSound,
+      volume: s.bellVolume,
+      repeat: s.bellRepeat,
+      sound: Boolean(s.sound && !s.quiet),
+      onRing: () => vibrate && navigator.vibrate(s.quiet ? [400, 200, 400] : [250, 120, 250]),
+    });
+    return this.ringing;
+  }
+
+  stopRinging() {
+    this.ringing?.stop();
+    this.ringing = null;
+    if (vibrationSupported()) navigator.vibrate(0);
   }
 }

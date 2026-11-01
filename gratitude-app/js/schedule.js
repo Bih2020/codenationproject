@@ -26,6 +26,8 @@ export function defaultReminderSettings() {
     sound: true,
     vibration: true,
     bellSound: 'bowl', // see sounds.js
+    bellVolume: 'loud', // 'soft' | 'medium' | 'loud'
+    bellRepeat: 'three', // 'once' | 'three' | 'until' (rings until the reminder is answered)
     quiet: false, // bell mode "vibrate only": no sound, give thanks silently (work, school)
   };
 }

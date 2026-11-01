@@ -6,7 +6,7 @@ import { CATEGORIES } from '../prompts.js';
 import { formatTime, weekdayName, dayKey, addDays, startOfDay } from '../dates.js';
 import { t, tn, getLanguage } from '../i18n.js';
 import { entriesToCsv } from '../store.js';
-import { BELL_SOUNDS, playBell } from '../sounds.js';
+import { BELL_SOUNDS, BELL_VOLUMES, BELL_REPEATS, playBell } from '../sounds.js';
 import { describeNext } from './home.js';
 
 let reminderError = '';
@@ -180,6 +180,20 @@ export function render(ctx) {
             </li>`).join('')}
           </ul>
         </fieldset>
+        <fieldset class="group">
+          <legend class="field-label">${t('Bell volume')}</legend>
+          <div class="radio-grid three">
+            ${BELL_VOLUMES.map((v) => radio('bell-volume', v.id, t(v.label), (rs.bellVolume || 'loud') === v.id)).join('')}
+          </div>
+        </fieldset>
+        <fieldset class="group">
+          <legend class="field-label">${t('Ring')}</legend>
+          <div class="radio-grid three">
+            ${BELL_REPEATS.map((r) => radio('bell-repeat', r.id, t(r.label), (rs.bellRepeat || 'three') === r.id)).join('')}
+          </div>
+          <p class="muted small">${t('“Until I respond” rings about every 4 seconds for up to a minute, and stops as soon as you tap the reminder.')}</p>
+        </fieldset>
+        <p class="muted small">${t('Tip: your phone’s own volume also matters. Turn it up and make sure silent mode is off.')}</p>
         ${sw('rs-vibration', t('Vibration'), rs.vibration, { desc: vibrationSupported() ? t('On supported phones.') : t('Not supported on this device.'), disabled: !vibrationSupported() })}
       </fieldset>
       ${permissionHtml()}
@@ -259,7 +273,7 @@ export function render(ctx) {
       <p class="muted small">${t('No account is used, so there is no online account to delete.')} <a class="link" href="./${getLanguage() === 'fr' ? 'privacy-fr.html' : 'privacy.html'}" target="_blank" rel="noopener">${t('Read the privacy policy')}</a></p>
     </section>
 
-    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.4' })}</p>
+    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.5' })}</p>
   </div>`;
 }
 
@@ -368,10 +382,17 @@ export function mount(root, ctx, params) {
   root.querySelectorAll('input[name="bell-sound"]').forEach((r) =>
     r.addEventListener('change', () => {
       store.updateReminders({ bellSound: r.value });
-      playBell(r.value);
+      playBell(r.value, { volume: rs().bellVolume });
     })
   );
-  root.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => playBell(b.dataset.play)));
+  root.querySelectorAll('[data-play]').forEach((b) => b.addEventListener('click', () => playBell(b.dataset.play, { volume: rs().bellVolume })));
+  root.querySelectorAll('input[name="bell-volume"]').forEach((r) =>
+    r.addEventListener('change', () => {
+      store.updateReminders({ bellVolume: r.value });
+      playBell(rs().bellSound, { volume: r.value });
+    })
+  );
+  root.querySelectorAll('input[name="bell-repeat"]').forEach((r) => r.addEventListener('change', () => store.updateReminders({ bellRepeat: r.value })));
   root.querySelector('#rs-sound').addEventListener('change', (ev) => store.updateReminders({ sound: ev.target.checked }));
   root.querySelector('#rs-vibration').addEventListener('change', (ev) => store.updateReminders({ vibration: ev.target.checked }));
   root.querySelector('#rs-defaults').addEventListener('click', async () => {
@@ -390,8 +411,9 @@ export function mount(root, ctx, params) {
   });
   root.querySelector('#test-reminder').addEventListener('click', async () => {
     const shown = await showWebNotification(rs());
-    if (!shown) ctx.engine.onReminder(new Date(), { visible: true });
-    else toast(t('Test notification sent.'));
+    ctx.engine.ring(rs());
+    ctx.engine.onReminder(new Date(), { visible: true });
+    if (shown) toast(t('Test notification sent.'));
   });
 
   // Appearance

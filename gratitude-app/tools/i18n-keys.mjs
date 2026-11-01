@@ -67,6 +67,8 @@ export async function contentKeys() {
   ch.CHALLENGES.forEach((c) => (add(c.title), add(c.tagline)));
   ch.DAY_PLAN.forEach((d) => add(d.prompt));
   sounds.BELL_SOUNDS.forEach((b) => (add(b.label), add(b.desc)));
+  sounds.BELL_VOLUMES.forEach((v) => add(v.label));
+  sounds.BELL_REPEATS.forEach((r) => add(r.label));
   card.CARD_STYLES.forEach((c) => add(c.label));
   sched.FREQUENCY_OPTIONS.forEach((o) => (add(o.label), add(o.short)));
   const s0 = sched.defaultReminderSettings();

@@ -355,6 +355,8 @@ export const BELL_SOUNDS = [
 ];
 
 export const CARD_STYLES = ['Crépuscule', 'Aurore', 'Océan'];
+export const BELL_VOLUMES = ['Doux', 'Moyen', 'Fort'];
+export const BELL_REPEATS = ['Une fois', '3 fois', 'Jusqu’à ma réponse'];
 
 export const FREQUENCY = [
   { label: 'Toutes les 30 minutes', short: '30 minutes' },

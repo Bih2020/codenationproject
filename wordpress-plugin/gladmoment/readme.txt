@@ -3,7 +3,7 @@ Contributors: gemrhythm
 Tags: gratitude, journal, wellbeing, reminders
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 1.4.1
+Stable tag: 1.5.0
 License: MIT
 
 A gentle gratitude reminder and journal for your visitors.
