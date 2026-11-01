@@ -1,4 +1,4 @@
-# Gratitude Moments 💛
+# Gladmoment 💛
 
 A colourful, calm, mobile-first app that helps you pause during the day and notice something you're grateful for.
 
@@ -81,7 +81,7 @@ sw.js                 notificationclick → focus or open the app on the entry s
 1. **Native app (recommended):** wrap the app with [Capacitor](https://capacitorjs.com/):
    ```bash
    npm i @capacitor/core @capacitor/cli @capacitor/local-notifications
-   npx cap init "Gratitude Moments" com.example.gratitude --web-dir .
+   npx cap init "Gladmoment" com.example.gratitude --web-dir .
    npx cap add android && npx cap add ios
    ```
    `notifications.js` detects `Capacitor.Plugins.LocalNotifications` automatically. It then schedules the next 60 reminders (up to 14 days ahead) and reschedules whenever settings change. Still to do for this path:
@@ -137,6 +137,23 @@ js/views/*.js          home, journal, insights, week, favourites, settings, onbo
 tests/unit/*.test.mjs  node:test unit tests
 tests/e2e/run.mjs      Playwright browser tests
 ```
+
+## Publishing Gladmoment
+
+1. **Website (free, works on any phone):** turn on GitHub Pages for the repository
+   (Settings → Pages → Deploy from a branch → pick the branch and `/ (root)`).
+   The app is then at `https://<user>.github.io/<repo>/gratitude-app/`. People open it and
+   choose *Add to Home Screen* or *Install app*. Netlify or Cloudflare Pages work too: drag the
+   `gratitude-app` folder onto their dashboard. A custom domain (for example `gladmoment.app`) can point at either.
+2. **Google Play:** package the website with [PWABuilder](https://www.pwabuilder.com/) or Capacitor.
+   You need a Google Play developer account (one-off fee), a privacy policy URL (`privacy.html`),
+   screenshots and the Data safety form (answer: no data collected).
+3. **Apple App Store:** wrap with Capacitor and build in Xcode on a Mac. You need the Apple Developer
+   Program (yearly fee). Apple rejects apps that are only a website in a wrapper, so add native
+   notifications (see above) before submitting.
+
+Before launch: add your contact email to `privacy.html`, test on real phones, and check that the
+name is free in the app stores and the trade mark register.
 
 ## Suggested next step
 

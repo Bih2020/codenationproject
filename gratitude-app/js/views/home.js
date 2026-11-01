@@ -46,7 +46,7 @@ function newPrompt(ctx, category) {
 }
 
 export function title() {
-  return 'Gratitude Moments';
+  return 'Gladmoment';
 }
 
 export function enter(ctx) {
@@ -167,7 +167,7 @@ function headerHtml(ctx) {
       <div class="brand">
         <span class="brand-mark" aria-hidden="true">✿</span>
         <div>
-          <p class="brand-name">Gratitude Moments</p>
+          <p class="brand-name">Gladmoment</p>
           <p class="brand-date">${esc(formatLongDate(now))}</p>
         </div>
       </div>

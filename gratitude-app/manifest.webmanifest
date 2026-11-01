@@ -1,6 +1,6 @@
 {
-  "name": "Gratitude Moments",
-  "short_name": "Gratitude",
+  "name": "Gladmoment",
+  "short_name": "Gladmoment",
   "description": "A gentle, private gratitude reminder and journal.",
   "start_url": "./#/home",
   "scope": "./",

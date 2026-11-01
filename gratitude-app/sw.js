@@ -1,7 +1,7 @@
 // Service worker: offline app shell + notification click handling.
-const CACHE = 'gratitude-moments-v1';
+const CACHE = 'gladmoment-v2';
 const SHELL = [
-  './', './index.html', './manifest.webmanifest', './css/styles.css',
+  './', './index.html', './privacy.html', './manifest.webmanifest', './css/styles.css',
   './js/app.js', './js/store.js', './js/schedule.js', './js/stats.js', './js/prompts.js', './js/dates.js',
   './js/notifications.js', './js/voice.js', './js/ui.js',
   './js/views/home.js', './js/views/journal.js', './js/views/insights.js', './js/views/week.js',

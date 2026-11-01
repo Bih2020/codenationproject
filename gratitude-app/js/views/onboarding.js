@@ -10,7 +10,7 @@ let permission = null;
 let error = '';
 
 export function title() {
-  return 'Welcome · Gratitude Moments';
+  return 'Welcome · Gladmoment';
 }
 
 export function enter() {

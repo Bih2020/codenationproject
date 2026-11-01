@@ -5,7 +5,7 @@ import { dayKey, relativeDayLabel } from '../dates.js';
 let mood = null;
 
 export function title() {
-  return 'Daily Reflection · Gratitude Moments';
+  return 'Daily Reflection · Gladmoment';
 }
 
 function dateFrom(params) {

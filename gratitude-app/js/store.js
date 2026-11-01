@@ -349,7 +349,7 @@ export function createStore({ storage, now = () => new Date() } = {}) {
 
     exportData() {
       return {
-        app: 'Gratitude Moments',
+        app: 'Gladmoment',
         exportedAt: new Date(now()).toISOString(),
         schemaVersion: SCHEMA_VERSION,
         user: { id: state.user.id, displayName: state.user.displayName, createdAt: state.user.createdAt, preferences: state.user.preferences },
@@ -362,7 +362,7 @@ export function createStore({ storage, now = () => new Date() } = {}) {
 
     /** Merge entries/reflections from an export file. Returns number of new entries. */
     importData(data) {
-      if (!data || !Array.isArray(data.entries)) throw new Error('This file does not look like a Gratitude Moments export.');
+      if (!data || !Array.isArray(data.entries)) throw new Error('This file does not look like a Gladmoment export.');
       let added = 0;
       commit((s) => {
         const ids = new Set(s.entries.map((e) => e.id));

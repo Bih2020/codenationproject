@@ -7,7 +7,7 @@ import { MOODS } from '../stats.js';
 const filters = { q: '', category: '', mood: '', favouritesOnly: false, day: '', showCalendar: false, month: null };
 
 export function title() {
-  return 'My Gratitude Journal · Gratitude Moments';
+  return 'My Gratitude Journal · Gladmoment';
 }
 
 export function enter(_ctx, params) {

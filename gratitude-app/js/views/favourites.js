@@ -2,7 +2,7 @@
 import { entryCard, bindEntryActions, pageHeader } from '../ui.js';
 
 export function title() {
-  return 'My Favourites · Gratitude Moments';
+  return 'My Favourites · Gladmoment';
 }
 
 export function render(ctx) {

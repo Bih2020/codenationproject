@@ -10,7 +10,7 @@ import { describeNext } from './home.js';
 let reminderError = '';
 
 export function title() {
-  return 'Settings · Gratitude Moments';
+  return 'Settings · Gladmoment';
 }
 
 export function enter() {
@@ -79,7 +79,7 @@ export function render(ctx) {
   const custom = rs.mode === 'custom';
   const intervalOptions = FREQUENCY_OPTIONS.map((o) => radio('freq', String(o.minutes), o.label, !custom && rs.intervalMinutes === o.minutes)).join('');
 
-  return `${pageHeader('Settings', 'Make Gratitude Moments feel like yours')}
+  return `${pageHeader('Settings', 'Make Gladmoment feel like yours')}
   <div class="page settings">
     <section class="card" id="section-reminders" aria-labelledby="h-reminders">
       <h2 id="h-reminders"><span aria-hidden="true">🔔</span> Reminder settings</h2>
@@ -234,10 +234,10 @@ export function render(ctx) {
         <button type="button" class="btn btn-danger-outline" id="delete-all" ${state.entries.length || state.reflections.length ? '' : 'disabled'}>Delete all gratitude history</button>
         <button type="button" class="btn btn-danger-outline" id="reset-app">Erase everything &amp; start over</button>
       </div>
-      <p class="muted small">No account is used, so there is no online account to delete.</p>
+      <p class="muted small">No account is used, so there is no online account to delete. <a class="link" href="./privacy.html" target="_blank" rel="noopener">Read the privacy policy</a></p>
     </section>
 
-    <p class="about muted small">Gratitude Moments · works offline · version 1.0</p>
+    <p class="about muted small">Gladmoment · works offline · version 1.0</p>
   </div>`;
 }
 
@@ -393,11 +393,11 @@ export function mount(root, ctx, params) {
   // Data
   const stamp = dayKey(new Date());
   root.querySelector('#export-json').addEventListener('click', () => {
-    downloadFile(`gratitude-moments-${stamp}.json`, JSON.stringify(store.exportData(), null, 2), 'application/json');
+    downloadFile(`gladmoment-${stamp}.json`, JSON.stringify(store.exportData(), null, 2), 'application/json');
     toast('Export downloaded. Keep it somewhere private.');
   });
   root.querySelector('#export-csv').addEventListener('click', () => {
-    downloadFile(`gratitude-moments-${stamp}.csv`, entriesToCsv(store.state.entries), 'text/csv');
+    downloadFile(`gladmoment-${stamp}.csv`, entriesToCsv(store.state.entries), 'text/csv');
     toast('Export downloaded. Keep it somewhere private.');
   });
   root.querySelector('#import-file').addEventListener('change', async (ev) => {
@@ -407,7 +407,7 @@ export function mount(root, ctx, params) {
       const added = store.importData(JSON.parse(await file.text()));
       toast(`Imported ${added} gratitude ${added === 1 ? 'moment' : 'moments'}.`);
     } catch (err) {
-      toast(err.message?.includes('Gratitude') ? err.message : 'That file could not be imported.');
+      toast(err.message?.includes('Gladmoment') ? err.message : 'That file could not be imported.');
     }
   });
   root.querySelector('#delete-all').addEventListener('click', async () => {

@@ -5,7 +5,7 @@ import { CATEGORIES } from '../prompts.js';
 import { addDays, startOfDay, WEEKDAYS_SHORT } from '../dates.js';
 
 export function title() {
-  return 'Insights · Gratitude Moments';
+  return 'Insights · Gladmoment';
 }
 
 export function render(ctx) {

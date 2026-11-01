@@ -105,7 +105,7 @@ function render({ scrollTop = false, routeChange = false } = {}) {
   main.innerHTML = view.render(ctx, params);
   const cleanup = view.mount?.(main, ctx, params);
   if (typeof cleanup === 'function') current.unmount = cleanup;
-  document.title = `${view.title?.(ctx) || 'Gratitude Moments'}`;
+  document.title = `${view.title?.(ctx) || 'Gladmoment'}`;
   renderStorageWarning();
   if (routeChange) {
     main.classList.add('entering');

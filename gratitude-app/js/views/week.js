@@ -7,7 +7,7 @@ import { addDays, startOfWeek, WEEKDAYS_SHORT } from '../dates.js';
 let weekStart = null;
 
 export function title() {
-  return 'Your Gratitude Week · Gratitude Moments';
+  return 'Your Gratitude Week · Gladmoment';
 }
 
 export function enter() {
