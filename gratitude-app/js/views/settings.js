@@ -224,11 +224,12 @@ export function render(ctx) {
         <p><strong>Voice input:</strong> nothing is recorded or stored. Some browsers (such as Chrome) convert speech to text using their own online service, so spoken words may be processed by the browser maker.</p>
       </div>
       <div class="row wrap">
-        <button type="button" class="btn btn-soft" id="export-json">${icons.download} Export (JSON)</button>
-        <button type="button" class="btn btn-soft" id="export-csv">${icons.download} Export (CSV)</button>
-        <label class="btn btn-soft" for="import-file">${icons.upload} Import backup</label>
+        <button type="button" class="btn btn-soft" id="export-json">${icons.download} Save a backup</button>
+        <button type="button" class="btn btn-soft" id="export-csv">${icons.download} Download as spreadsheet</button>
+        <label class="btn btn-soft" for="import-file">${icons.upload} Restore a backup</label>
         <input type="file" id="import-file" accept="application/json,.json" class="sr-only">
       </div>
+      <p class="muted small">A backup lets you move your journal to a new phone: save it here, then choose “Restore a backup” on the new phone. The spreadsheet opens in Excel or Google Sheets.</p>
       <p class="muted small">To delete individual entries, open them in <a class="link" href="#/journal">your journal</a> and tap the bin icon.</p>
       <div class="danger-zone">
         <button type="button" class="btn btn-danger-outline" id="delete-all" ${state.entries.length || state.reflections.length ? '' : 'disabled'}>Delete all gratitude history</button>
@@ -394,20 +395,20 @@ export function mount(root, ctx, params) {
   const stamp = dayKey(new Date());
   root.querySelector('#export-json').addEventListener('click', () => {
     downloadFile(`gladmoment-${stamp}.json`, JSON.stringify(store.exportData(), null, 2), 'application/json');
-    toast('Export downloaded. Keep it somewhere private.');
+    toast('Backup saved to your downloads. Keep it somewhere private.');
   });
   root.querySelector('#export-csv').addEventListener('click', () => {
     downloadFile(`gladmoment-${stamp}.csv`, entriesToCsv(store.state.entries), 'text/csv');
-    toast('Export downloaded. Keep it somewhere private.');
+    toast('Spreadsheet saved to your downloads. Keep it somewhere private.');
   });
   root.querySelector('#import-file').addEventListener('change', async (ev) => {
     const file = ev.target.files?.[0];
     if (!file) return;
     try {
       const added = store.importData(JSON.parse(await file.text()));
-      toast(`Imported ${added} gratitude ${added === 1 ? 'moment' : 'moments'}.`);
+      toast(`Backup restored: ${added} gratitude ${added === 1 ? 'moment' : 'moments'} added.`);
     } catch (err) {
-      toast(err.message?.includes('Gladmoment') ? err.message : 'That file could not be imported.');
+      toast(err.message?.includes('Gladmoment') ? err.message : 'That file couldn’t be restored. Choose a Gladmoment backup file.');
     }
   });
   root.querySelector('#delete-all').addEventListener('click', async () => {

@@ -55,7 +55,7 @@ The browser tests save screenshots to `tests/e2e/screenshots/`.
 | Weekly summary (count, top themes, most active day, favourites, day-by-day chart, week navigation) | ✅ Works |
 | "A Gratitude From the Past" (your own entries only, favours 1-week, 1, 3 or 6-month and 1-year anniversaries) | ✅ Works |
 | Light, dark and system themes, three text sizes, reduce-motion option | ✅ Works |
-| Export as JSON or CSV, import a JSON backup, delete all history, erase everything | ✅ Works |
+| Save a backup (JSON) or download as a spreadsheet (CSV), restore a backup, delete all history, erase everything | ✅ Works |
 | Offline support through the service worker | ✅ Works |
 
 ---
@@ -139,6 +139,10 @@ tests/e2e/run.mjs      Playwright browser tests
 ```
 
 ## Publishing Gladmoment
+
+**Live home: https://gemrhythm.com/gladmoment/** (Hostinger, alongside the Gemrhythm WordPress site).
+Upload `gladmoment-website.zip` in hPanel → File Manager → `public_html`, extract it, and purge
+LiteSpeed Cache after each update.
 
 1. **Website (free, works on any phone):** turn on GitHub Pages for the repository
    (Settings → Pages → Deploy from a branch → pick the branch and `/ (root)`).
