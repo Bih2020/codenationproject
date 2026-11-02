@@ -5,6 +5,7 @@ import { icons, esc, toast } from './ui.js';
 import { t, setLanguage, detectLanguage } from './i18n.js';
 import { unlockAudio, prepareBell } from './sounds.js';
 import { loadSiteConfig } from './config.js';
+import { syncPush, readPushStatus } from './push.js';
 import * as home from './views/home.js';
 import * as journal from './views/journal.js';
 import * as insights from './views/insights.js';
@@ -193,6 +194,27 @@ document.addEventListener('visibilitychange', () => {
   if (document.visibilityState === 'hidden') engine.stopRinging();
 });
 
+// ---------- push reminders (so the bell reaches the phone when the app is closed) ----------
+let pushTimer = null;
+function schedulePushSync(delay = 1500) {
+  clearTimeout(pushTimer);
+  pushTimer = setTimeout(async () => {
+    if (!store.state.user.onboarded) return;
+    await syncPush(store.state.reminderSettings);
+    if (current.name === 'settings') render();
+  }, delay);
+}
+globalThis.__gmSyncPush = (opts) => syncPush(store.state.reminderSettings, opts);
+document.addEventListener('visibilitychange', () => {
+  // Keep the 30-day schedule topped up: refresh at most every 6 hours.
+  const last = readPushStatus()?.at || 0;
+  if (document.visibilityState === 'visible' && Date.now() - last > 6 * 3600 * 1000) schedulePushSync(500);
+});
+navigator.serviceWorker?.addEventListener('message', (ev) => {
+  if (ev.data?.type !== 'push-reminder' || document.visibilityState !== 'visible') return;
+  if (Date.now() - (engine.lastDelivered || 0) > 2 * 60 * 1000) engine.deliver(new Date());
+});
+
 // ---------- install prompt (Android / desktop Chrome) ----------
 window.addEventListener('beforeinstallprompt', (ev) => {
   ev.preventDefault();
@@ -216,11 +238,12 @@ if ('serviceWorker' in navigator && location.protocol !== 'file:') {
 let lastSnapshot = '';
 store.subscribe(() => {
   applyAppearance();
-  const rs = JSON.stringify(store.state.reminderSettings);
+  const rs = JSON.stringify(store.state.reminderSettings) + store.state.user.preferences.language;
   if (rs !== lastSnapshot) {
     lastSnapshot = rs;
     engine.resync();
     prepareBell(store.state.reminderSettings.bellSound);
+    schedulePushSync();
   }
   render();
 });
@@ -235,10 +258,11 @@ document.addEventListener('visibilitychange', () => {
 });
 
 applyAppearance();
-lastSnapshot = JSON.stringify(store.state.reminderSettings);
+lastSnapshot = JSON.stringify(store.state.reminderSettings) + store.state.user.preferences.language;
 engine.start();
 render({ routeChange: true });
 prepareBell(store.state.reminderSettings.bellSound);
+schedulePushSync(2000);
 loadSiteConfig().then(() => current.name === 'home' && render());
 
 if (store.warning) toast(t(store.warning), { duration: 9000 });

@@ -1,10 +1,10 @@
 // Service worker: offline app shell + notification click handling.
-const CACHE = 'gladmoment-v8';
+const CACHE = 'gladmoment-v10';
 const SHELL = [
   './', './index.html', './privacy.html', './privacy-fr.html', './js/i18n.js', './js/i18n/fr.js', './manifest.webmanifest', './css/styles.css',
   './js/app.js', './js/store.js', './js/schedule.js', './js/stats.js', './js/prompts.js', './js/dates.js',
   './js/notifications.js', './js/voice.js', './js/ui.js', './js/config.js', './js/sounds.js',
-  './js/challenges.js', './js/nudges.js', './js/sharecard.js', './js/pause.js', './js/views/challenges.js',
+  './js/challenges.js', './js/nudges.js', './js/push.js', './config.json', './js/sharecard.js', './js/pause.js', './js/views/challenges.js',
   './js/views/home.js', './js/views/journal.js', './js/views/insights.js', './js/views/week.js',
   './js/views/favourites.js', './js/views/settings.js', './js/views/onboarding.js', './js/views/reflection.js',
   './icons/icon.svg', './icons/icon-192.png', './icons/icon-512.png',
@@ -25,7 +25,9 @@ self.addEventListener('activate', (event) => {
 // Network first (so updates arrive), falling back to the cache when offline.
 self.addEventListener('fetch', (event) => {
   const req = event.request;
-  if (req.method !== 'GET' || new URL(req.url).origin !== self.location.origin) return;
+  const url = new URL(req.url);
+  // Never cache WordPress API calls (push reminders) or anything from other sites.
+  if (req.method !== 'GET' || url.origin !== self.location.origin || url.searchParams.has('rest_route')) return;
   event.respondWith(
     fetch(req)
       .then((res) => {
@@ -57,14 +59,31 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // Ready for Web Push (requires a push server — see README "Background notifications").
+// Reminders sent by gemrhythm.com while Gladmoment is closed (see includes/push.php in the plugin).
 self.addEventListener('push', (event) => {
-  const data = event.data ? event.data.json() : {};
+  let data = {};
+  try {
+    data = event.data ? event.data.json() : {};
+  } catch { /* plain or empty message */ }
   event.waitUntil(
-    self.registration.showNotification(data.title || 'A little gratitude moment 💛', {
-      body: data.body || "Take a few seconds. What is one thing you're grateful for right now?",
-      icon: './icons/icon-192.png',
-      tag: 'gratitude-reminder',
-      data: { url: './#/home?focus=1' },
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      // If Gladmoment is open on screen it rings its own bell, so don't double up.
+      const open = clients.find((c) => c.visibilityState === 'visible');
+      if (open) {
+        open.postMessage({ type: 'push-reminder' });
+        return undefined;
+      }
+      return self.registration.showNotification(data.title || 'A little gratitude moment 💛', {
+        body: data.body || "Take a few seconds. What is one thing you're grateful for right now?",
+        icon: './icons/icon-192.png',
+        badge: './icons/icon-192.png',
+        tag: 'gratitude-reminder',
+        renotify: true,
+        requireInteraction: true,
+        silent: false,
+        vibrate: data.quiet ? [400, 200, 400, 200, 400] : [300, 150, 300, 150, 300],
+        data: { url: data.url || './#/home?focus=1' },
+      });
     })
   );
 });

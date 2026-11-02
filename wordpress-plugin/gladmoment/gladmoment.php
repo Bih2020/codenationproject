@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Gladmoment
  * Description:       A gentle gratitude reminder and journal. Installs the Gladmoment app at yoursite.com/gladmoment/ and adds the [gladmoment_landing] and [gladmoment_button] shortcodes.
- * Version:           1.6.0
+ * Version:           1.7.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Gemrhythm
@@ -14,10 +14,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GLADMOMENT_VERSION', '1.6.0' );
+define( 'GLADMOMENT_VERSION', '1.7.0' );
 define( 'GLADMOMENT_SLUG', 'gladmoment' );
 define( 'GLADMOMENT_SOURCE', __DIR__ . '/app' );
 define( 'GLADMOMENT_MARKER', '.gladmoment-plugin' );
+
+require_once __DIR__ . '/includes/push.php';
 
 /** Folder in the site root where the app is served from. */
 function gladmoment_target_dir() {
@@ -126,6 +128,7 @@ function gladmoment_install() {
 		}
 		update_option( 'gladmoment_status', 'fallback' );
 	}
+	gladmoment_push_install();
 	update_option( 'gladmoment_installed_version', GLADMOMENT_VERSION );
 	gladmoment_purge_cache();
 	return true;
@@ -214,6 +217,7 @@ function gladmoment_uninstall_files() {
 	}
 	delete_option( 'gladmoment_status' );
 	delete_option( 'gladmoment_installed_version' );
+	wp_clear_scheduled_hook( 'gladmoment_push_tick' );
 }
 register_deactivation_hook( __FILE__, 'gladmoment_uninstall_files' );
 
@@ -506,6 +510,7 @@ function gladmoment_settings_page() {
 	echo '<span class="description">How to get a link: Media → Library → click the track → <em>Copy URL to clipboard</em>. If this is empty, the pause plays gentle chimes.</span></p>';
 	submit_button( 'Save music settings', 'secondary', 'submit', false );
 	echo '</form>';
+	gladmoment_push_settings_section();
 	echo '<h2>Show Gladmoment to your visitors</h2><ul style="list-style:disc;padding-left:20px">';
 	echo '<li><strong>Menu:</strong> Appearance → Menus → Custom Links → URL <code>' . esc_html( $url ) . '</code></li>';
 	echo '<li><strong>Button on any page:</strong> add a Shortcode block with <code>[gladmoment_button]</code></li>';

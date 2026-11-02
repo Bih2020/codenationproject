@@ -637,6 +637,87 @@ await t('loud bright bell as an audio file; pause plays your music; playlist lin
   }
 });
 
+await t('push: closed-app reminders sync with the site; service worker rings when a push arrives', async () => {
+  const page = await newPage({ permissions: ['notifications'] });
+  // A fake push service (headless Chromium has none) and a fake WordPress REST API.
+  await page.addInitScript(() => {
+    const sub = {
+      endpoint: 'https://fcm.googleapis.com/fcm/send/test-phone',
+      toJSON() { return { endpoint: this.endpoint, keys: { p256dh: 'BP' + 'A'.repeat(85), auth: 'AAAAAAAAAAAAAAAAAAAAAA' } }; },
+      unsubscribe: async () => true,
+    };
+    let subscribed = false;
+    PushManager.prototype.getSubscription = async () => (subscribed ? sub : null);
+    PushManager.prototype.subscribe = async (opts) => {
+      if (!(opts.applicationServerKey instanceof Uint8Array) || opts.applicationServerKey.length !== 65) throw new Error('bad key');
+      subscribed = true;
+      return sub;
+    };
+  });
+  const posts = [];
+  await page.route((u) => u.search.includes('rest_route='), async (route) => {
+    const u = new URL(route.request().url());
+    const r = u.searchParams.get('rest_route');
+    if (r.endsWith('/push/key')) return route.fulfill({ json: { publicKey: 'B' + 'A'.repeat(86) } });
+    if (r.endsWith('/push/subscribe')) {
+      const body = route.request().postDataJSON();
+      posts.push(body);
+      return route.fulfill({ json: { ok: true, scheduled: body.times.length } });
+    }
+    if (r.endsWith('/push/unsubscribe')) { posts.push({ unsubscribed: route.request().postDataJSON().endpoint }); return route.fulfill({ json: { ok: true } }); }
+    return route.fulfill({ status: 404, body: '' });
+  });
+  await onboard(page);
+  await page.waitForFunction(() => JSON.parse(localStorage.getItem('gratitude-moments:push') || '{}').state === 'on', null, { timeout: 8000 });
+  const first = posts.at(-1);
+  const now = Date.now() / 1000;
+  assert.equal(first.subscription.endpoint, 'https://fcm.googleapis.com/fcm/send/test-phone');
+  assert.equal(first.lang, 'en');
+  assert.ok(first.times.length > 50, `only ${first.times.length} times`);
+  assert.ok(first.times.every((x) => x > now - 60 && x < now + 31 * 86400));
+  assert.ok(!JSON.stringify(first).includes('grateful'), 'no journal content is sent');
+  // Settings shows it's working; "Test with the app closed" schedules one a minute from now.
+  await page.goto(`${URL_}#/settings`);
+  await page.waitForSelector('text=Reminders also arrive when Gladmoment is closed.');
+  const before = posts.length;
+  await page.click('#test-closed');
+  await page.waitForSelector('.toast');
+  await page.waitForTimeout(300);
+  assert.ok(posts.length > before);
+  assert.ok(posts.at(-1).times.some((x) => Math.abs(x - (Date.now() / 1000 + 60)) < 15));
+  // Turning the bell off clears the server's times.
+  await page.evaluate(() => window.__gratitude.store.updateReminders({ enabled: false }));
+  await page.waitForTimeout(2200);
+  assert.equal(posts.at(-1).times.length, 0);
+  await page.evaluate(() => window.__gratitude.store.updateReminders({ enabled: true }));
+
+  // A push arriving while the app is closed shows a system notification.
+  const helper = await page.context().newPage();
+  await page.close();
+  const cdp = await page.context().newCDPSession(helper);
+  const regs = [];
+  cdp.on('ServiceWorker.workerRegistrationUpdated', (e) => regs.push(...e.registrations));
+  await cdp.send('ServiceWorker.enable');
+  await helper.waitForTimeout(300);
+  const reg = regs.find((r) => r.scopeURL.startsWith(URL_) && !r.isDeleted);
+  assert.ok(reg, 'service worker registration found');
+  await cdp.send('ServiceWorker.deliverPushMessage', {
+    origin: URL_.slice(0, -1), registrationId: reg.registrationId,
+    data: JSON.stringify({ title: 'A little gratitude moment 💛', body: 'Take a few seconds.', url: './#/home?focus=1' }),
+  });
+  await helper.goto(`${URL_}privacy.html`);
+  const shown = await helper.evaluate(async () => {
+    for (let i = 0; i < 20; i++) {
+      const n = await (await navigator.serviceWorker.ready).getNotifications();
+      if (n.length) return n.map((x) => [x.title, x.tag, x.requireInteraction]);
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    return [];
+  });
+  assert.deepEqual(shown[0], ['A little gratitude moment 💛', 'gratitude-reminder', true]);
+  await helper.context().close();
+});
+
 await t('dark mode and theme switching', async () => {
   const page = await newPage({ dark: true });
   await onboard(page);

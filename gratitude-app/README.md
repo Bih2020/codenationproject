@@ -47,7 +47,7 @@ The browser tests save screenshots to `tests/e2e/screenshots/`.
 | Next reminder shown in the header and in settings | ✅ Works |
 | Reminders while the app is open (in-app banner, soft chime, vibration) | ✅ Works |
 | Device notifications when the app is open in another tab or minimised, with tap-to-open on the entry screen | ✅ Works (once permission is granted) |
-| Device notifications when the app is fully closed | ⚠️ Needs native or push setup (see below) |
+| Reminders when the app is fully closed (Web Push through the WordPress plugin; iPhone needs the Home Screen app) | ✅ Built; needs the Hostinger cron job and a real-phone test |
 | Voice to text, with a privacy notice and a clear "🎙 Listening…" indicator | ✅ Works in Chrome, Edge and Safari. Firefox shows "type instead" |
 | Mood check-in (optional) and mood insights, with a non-medical disclaimer | ✅ Works |
 | Streaks (no penalty until the day is over), "this week" count, milestones | ✅ Works |
@@ -80,7 +80,8 @@ js/notifications.js   Delivery
    ├─ ReminderEngine  Checks every 20 seconds and fires any reminder time that has just passed
    ├─ Web adapter     Notification API through the service worker (tapping opens #/home?focus=1)
    └─ Native adapter  Capacitor LocalNotifications: schedules the next 14 days whenever settings change
-sw.js                 notificationclick → focus or open the app on the entry screen. A `push` handler is ready.
+js/push.js            Web Push: sends the phone's push address and the next 30 days of reminder times to WordPress
+sw.js                 push → shows the reminder notification; notificationclick → opens the entry screen
 ```
 
 **What works today in a browser:** reminders fire on time while the app is open, whether it's in front, in another tab or minimised as an installed PWA. When the app is visible you get a calm in-app banner. Otherwise you get a system notification. Tapping either one opens the gratitude-entry screen.
@@ -100,7 +101,12 @@ sw.js                 notificationclick → focus or open the app on the entry s
    - Optionally switch voice input to `@capacitor-community/speech-recognition` so it can work on-device.
 
    **This adapter has not been tested on a real device yet.**
-2. **Web Push:** needs a small server that stores each user's push subscription and reminder schedule and sends pushes on time. `sw.js` already handles `push` events. Note that this means reminder times (not journal content) would be stored on a server, and that should be disclosed.
+2. **Web Push (built in, v1.7):** the WordPress plugin (`includes/push.php`) stores each phone's push
+   subscription and its upcoming reminder times (never journal content) and sends encrypted,
+   VAPID-signed pushes when they are due. A Hostinger cron job calls the secret URL shown in
+   Settings → Gladmoment every minute (WP-Cron is a slower backup). The app refreshes its times
+   whenever settings change and when it is opened, so the server always holds the next 30 days.
+   On iPhone, pushes only arrive for the Home Screen app (iOS 16.4+). This is disclosed in `privacy.html`.
 
 ---
 
@@ -114,7 +120,7 @@ On WordPress, `[gladmoment_landing lang="fr"]` shows the French landing page.
 
 ## Privacy
 
-- **Everything is stored locally** in the browser's storage for this app (key `gratitude-moments:v1`). There's no account and no server, and the app makes no network requests apart from loading its own files.
+- **Everything is stored locally** in the browser's storage for this app (key `gratitude-moments:v1`). There's no account. The only data sent to the server is for reminders when the app is closed: an anonymous push address and reminder times (see above).
 - **Voice:** nothing is recorded or stored. Listening only starts when you tap, is always shown on screen, stops when you leave the app, and stops automatically after 90 seconds. Some browsers (including Chrome) send the audio to the browser maker's speech service to turn it into text. The app explains this before the first use.
 - Local storage isn't encrypted. Anyone using the same device and browser profile could open the journal. A passcode lock would be a sensible future feature.
 - The insights are for personal reflection only and make no medical or psychological claims.

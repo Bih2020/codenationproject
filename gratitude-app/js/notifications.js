@@ -11,6 +11,7 @@
 //                    tick, and keeps native schedules in sync with settings.
 import { remindersBetween, upcomingReminders } from './schedule.js';
 import { ringBell } from './sounds.js';
+import { pushActive } from './push.js';
 import { t } from './i18n.js';
 
 export const REMINDER_TITLE = 'A little gratitude moment 💛';
@@ -156,12 +157,14 @@ export class ReminderEngine {
   }
 
   async deliver(at = this.now()) {
+    this.lastDelivered = Date.now();
     const s = this.getSettings();
     const visible = typeof document !== 'undefined' && document.visibilityState === 'visible';
     if (!nativeLN()) {
       // When the app is hidden (another tab / minimised PWA) use a system notification.
       // When visible, a calm in-app banner is less intrusive.
-      if (!visible) await showWebNotification(s);
+      // The server sends a push reminder when the app is hidden; only notify here if push isn't set up.
+      if (!visible && !pushActive()) await showWebNotification(s);
     }
     if (visible) this.ring(s);
     this.onReminder(at, { visible });

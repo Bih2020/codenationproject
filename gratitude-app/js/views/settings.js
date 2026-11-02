@@ -8,6 +8,7 @@ import { t, tn, getLanguage } from '../i18n.js';
 import { entriesToCsv } from '../store.js';
 import { BELL_SOUNDS, BELL_VOLUMES, BELL_REPEATS, playBell } from '../sounds.js';
 import { describeNext } from './home.js';
+import { pushCapability, unsubscribePush, readPushStatus } from '../push.js';
 
 let reminderError = '';
 
@@ -47,6 +48,26 @@ function permissionHtml() {
       ${p === 'default' ? `<button type="button" class="btn btn-primary" id="perm-request">${t('Allow notifications')}</button>` : ''}
       <button type="button" class="btn btn-soft" id="test-reminder">${t('Send a test reminder')}</button>
     </div>
+    ${backgroundHtml()}
+  </div>`;
+}
+
+/** Can reminders reach this phone while Gladmoment is closed? */
+function backgroundHtml() {
+  const cap = pushCapability();
+  const lines = {
+    on: ['✅', t('Reminders also arrive when Gladmoment is closed.'), t('They use your phone’s notification sound and volume. Keep notifications for Gladmoment (or your browser) switched on.')],
+    'needs-sync': ['⏳', t('Setting up reminders for when Gladmoment is closed…'), ''],
+    'needs-permission': ['🔔', t('Allow notifications so reminders can ring even when Gladmoment is closed.'), ''],
+    denied: ['🚫', t('Reminders can’t reach you while Gladmoment is closed, because notifications are blocked.'), ''],
+    'ios-needs-install': ['📲', t('On iPhone, add Gladmoment to your Home Screen first.'), t('Then open it from the Home Screen icon and allow notifications. iPhones only deliver reminders to apps on the Home Screen.')],
+    unsupported: ['ℹ️', t('This browser can’t receive reminders while Gladmoment is closed.'), t('Try Chrome on Android, or Safari on iPhone with Gladmoment added to the Home Screen.')],
+    server: ['⚠️', t('Couldn’t reach gemrhythm.com to set up reminders for when Gladmoment is closed.'), t('Check your internet connection. We’ll try again automatically.')],
+  }[cap] || ['ℹ️', t('This browser can’t receive reminders while Gladmoment is closed.'), ''];
+  return `<div class="bg-reminders" id="bg-reminders">
+    <p class="perm-head"><span aria-hidden="true">${lines[0]}</span> ${lines[1]}</p>
+    ${lines[2] ? `<p class="muted small">${lines[2]}</p>` : ''}
+    ${cap === 'on' || cap === 'server' ? `<button type="button" class="btn btn-soft small" id="test-closed">${t('Test with the app closed')}</button>` : ''}
   </div>`;
 }
 
@@ -256,6 +277,7 @@ export function render(ctx) {
       <div class="privacy-text">
         <p><strong>${t('Your journal stays on this device.')}</strong> ${t('Entries, reflections, moods and settings are saved in this browser’s private storage for this app. There is no account and nothing is uploaded to a server.')}</p>
         <p>${t('Anyone with access to this device and browser profile could open the app, so use your device’s lock screen. Clearing your browser’s site data will erase the journal, so save a backup first if you want to keep it.')}</p>
+        <p><strong>${t('Reminders when the app is closed:')}</strong> ${t('to ring your phone while Gladmoment is closed, gemrhythm.com stores your phone’s notification address and your upcoming reminder times (nothing else). Erasing everything removes them.')}</p>
         <p><strong>${t('Voice input:')}</strong> ${t('nothing is recorded or stored. Some browsers (such as Chrome) convert speech to text using their own online service, so spoken words may be processed by the browser maker.')}</p>
       </div>
       <div class="row wrap">
@@ -273,7 +295,7 @@ export function render(ctx) {
       <p class="muted small">${t('No account is used, so there is no online account to delete.')} <a class="link" href="./${getLanguage() === 'fr' ? 'privacy-fr.html' : 'privacy.html'}" target="_blank" rel="noopener">${t('Read the privacy policy')}</a></p>
     </section>
 
-    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.6' })}</p>
+    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.7' })}</p>
   </div>`;
 }
 
@@ -406,8 +428,16 @@ export function mount(root, ctx, params) {
   root.querySelector('#perm-request')?.addEventListener('click', async () => {
     const result = await requestNotificationPermission();
     store.setNotificationPermission(result);
+    if (result === 'granted') await globalThis.__gmSyncPush?.();
     ctx.rerender();
     toast(result === 'granted' ? t('Notifications allowed. Thank you.') : t('Notifications not allowed. In-app reminders will still appear.'));
+  });
+  root.querySelector('#test-closed')?.addEventListener('click', async (ev) => {
+    ev.currentTarget.disabled = true;
+    const status = await globalThis.__gmSyncPush?.({ extraTimes: [new Date(Date.now() + 60 * 1000)] });
+    if (status?.state === 'on') toast(t('Now close Gladmoment (or lock your phone). A test reminder will arrive in about a minute.'), { duration: 10000 });
+    else toast(t('Couldn’t reach gemrhythm.com to set up reminders for when Gladmoment is closed.'));
+    ctx.rerender();
   });
   root.querySelector('#test-reminder').addEventListener('click', async () => {
     const shown = await showWebNotification(rs());
@@ -483,6 +513,7 @@ export function mount(root, ctx, params) {
       danger: true,
     });
     if (ok) {
+      await unsubscribePush();
       store.resetApp();
       try {
         sessionStorage.clear();
