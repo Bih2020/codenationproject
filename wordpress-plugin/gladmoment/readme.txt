@@ -3,7 +3,7 @@ Contributors: gemrhythm
 Tags: gratitude, journal, wellbeing, reminders
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 1.7.2
+Stable tag: 1.8.0
 License: MIT
 
 A gentle gratitude reminder and journal for your visitors.
@@ -27,6 +27,8 @@ Shortcodes:
 Deactivating the plugin removes the /gladmoment/ folder it created.
 
 == Changelog ==
+= 1.8.0 =
+* With the app closed, the bell rings again each minute (3 times, or up to 5 for "Until I respond") and stops when the reminder is tapped, dismissed or the app is opened.
 = 1.7.2 =
 * Cron job can no longer be answered by the cache (uses POST; reminder check marked no-cache).
 * Settings shows what the notification service answered, plus a "Ring all signed-up phones now" test button.

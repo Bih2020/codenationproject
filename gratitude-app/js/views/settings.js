@@ -67,6 +67,7 @@ function backgroundHtml() {
   return `<div class="bg-reminders" id="bg-reminders">
     <p class="perm-head"><span aria-hidden="true">${lines[0]}</span> ${lines[1]}</p>
     ${lines[2] ? `<p class="muted small">${lines[2]}</p>` : ''}
+    ${cap === 'on' ? `<p class="muted small">${t('When Gladmoment is closed, the bell rings about once a minute (3 times, or up to 5 for “Until I respond”) and stops when you tap the reminder or open the app.')}</p>` : ''}
     ${cap === 'on' || cap === 'server' ? `<button type="button" class="btn btn-soft small" id="test-closed">${t('Test with the app closed')}</button>` : ''}
   </div>`;
 }
@@ -295,7 +296,7 @@ export function render(ctx) {
       <p class="muted small">${t('No account is used, so there is no online account to delete.')} <a class="link" href="./${getLanguage() === 'fr' ? 'privacy-fr.html' : 'privacy.html'}" target="_blank" rel="noopener">${t('Read the privacy policy')}</a></p>
     </section>
 
-    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.7' })}</p>
+    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.8' })}</p>
   </div>`;
 }
 

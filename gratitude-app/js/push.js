@@ -85,7 +85,7 @@ export async function syncPush(settings, { extraTimes = [] } = {}) {
     const res = await fetch(apiUrl('push/subscribe'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subscription: sub.toJSON(), times, lang: getLanguage(), quiet: Boolean(settings.quiet) }),
+      body: JSON.stringify({ subscription: sub.toJSON(), times, lang: getLanguage(), quiet: Boolean(settings.quiet), repeat: settings.bellRepeat || 'three' }),
     });
     if (!res.ok) throw new Error(`subscribe ${res.status}`);
     const data = await res.json();
@@ -93,6 +93,20 @@ export async function syncPush(settings, { extraTimes = [] } = {}) {
   } catch (err) {
     return writePushStatus({ state: 'server', error: String(err?.message || err) });
   }
+}
+
+/** The person has responded (opened the app): tell the server to stop ringing again. */
+export async function ackPush() {
+  if (!pushActive()) return;
+  try {
+    const sub = await (await navigator.serviceWorker?.getRegistration())?.pushManager?.getSubscription();
+    if (!sub) return;
+    await fetch(apiUrl('push/ack'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    });
+  } catch { /* offline: the server stops by itself after a few rings */ }
 }
 
 /** Remove this phone from the server (used by "Erase everything"). */

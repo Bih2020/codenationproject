@@ -496,4 +496,5 @@ export default {
   'Now close Gladmoment (or lock your phone). A test reminder will arrive in about a minute.': 'Fermez maintenant Gladmoment (ou verrouillez votre téléphone). Un rappel de test arrivera dans environ une minute.',
   'Reminders when the app is closed:': 'Rappels quand l’application est fermée :',
   'to ring your phone while Gladmoment is closed, gemrhythm.com stores your phone’s notification address and your upcoming reminder times (nothing else). Erasing everything removes them.': 'pour faire sonner votre téléphone quand Gladmoment est fermée, gemrhythm.com conserve l’adresse de notification de votre téléphone et vos prochaines heures de rappel (rien d’autre). Tout effacer les supprime.',
+  'When Gladmoment is closed, the bell rings about once a minute (3 times, or up to 5 for “Until I respond”) and stops when you tap the reminder or open the app.': 'Quand Gladmoment est fermée, la cloche sonne environ une fois par minute (3 fois, ou jusqu’à 5 fois pour « Jusqu’à ma réponse ») et s’arrête quand vous touchez le rappel ou ouvrez l’application.',
 };

@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GLADMOMENT_PUSH_DB_VERSION', '1' );
+define( 'GLADMOMENT_PUSH_DB_VERSION', '2' );
 
 function gladmoment_push_table() {
 	global $wpdb;
@@ -41,6 +41,9 @@ function gladmoment_push_install() {
 			times longtext NOT NULL,
 			lang varchar(8) NOT NULL DEFAULT 'en',
 			quiet tinyint(1) NOT NULL DEFAULT 0,
+			repeats tinyint(3) unsigned NOT NULL DEFAULT 3,
+			rings_left tinyint(3) unsigned NOT NULL DEFAULT 0,
+			next_ring int(10) unsigned NOT NULL DEFAULT 0,
 			updated_at int(10) unsigned NOT NULL DEFAULT 0,
 			PRIMARY KEY  (id),
 			UNIQUE KEY endpoint_hash (endpoint_hash)
@@ -197,6 +200,15 @@ add_action(
 		);
 		register_rest_route(
 			'gladmoment/v1',
+			'/push/ack',
+			array(
+				'methods'             => 'POST',
+				'permission_callback' => '__return_true',
+				'callback'            => 'gladmoment_push_rest_ack',
+			)
+		);
+		register_rest_route(
+			'gladmoment/v1',
 			'/push/unsubscribe',
 			array(
 				'methods'             => 'POST',
@@ -258,6 +270,7 @@ function gladmoment_push_rest_subscribe( $request ) {
 		'times'         => wp_json_encode( $times ),
 		'lang'          => 'fr' === $request->get_param( 'lang' ) ? 'fr' : 'en',
 		'quiet'         => $request->get_param( 'quiet' ) ? 1 : 0,
+		'repeats'       => gladmoment_push_repeats( $request->get_param( 'repeat' ) ),
 		'updated_at'    => $now,
 	);
 	$table    = gladmoment_push_table();
@@ -272,6 +285,24 @@ function gladmoment_push_rest_subscribe( $request ) {
 		$wpdb->insert( $table, $row );
 	}
 	return array( 'ok' => true, 'scheduled' => count( $times ) );
+}
+
+/** How many times a reminder rings when the app is closed (one per minute). */
+function gladmoment_push_repeats( $setting ) {
+	if ( 'once' === $setting ) {
+		return 1;
+	}
+	return 'until' === $setting ? 5 : 3;
+}
+
+/** The person answered (tapped, dismissed or opened the app): stop ringing again. */
+function gladmoment_push_rest_ack( $request ) {
+	global $wpdb;
+	$endpoint = (string) $request->get_param( 'endpoint' );
+	if ( $endpoint ) {
+		$wpdb->update( gladmoment_push_table(), array( 'rings_left' => 0 ), array( 'endpoint_hash' => hash( 'sha256', $endpoint ) ) );
+	}
+	return array( 'ok' => true );
 }
 
 function gladmoment_push_rest_unsubscribe( $request ) {
@@ -396,9 +427,22 @@ function gladmoment_push_send_due() {
 		$left  = array_values( array_filter( $times, function ( $t ) use ( $now ) {
 			return $t > $now;
 		} ) );
+		$changes = array();
+		$ring    = null;
+		$repeats = isset( $row->repeats ) ? max( 1, (int) $row->repeats ) : 3;
 		if ( $due ) {
+			// A new reminder: first ring, then ring again each minute until answered.
+			$ring                  = 0;
+			$changes['rings_left'] = $repeats - 1;
+			$changes['next_ring']  = $now + 50;
+		} elseif ( ! empty( $row->rings_left ) && (int) $row->next_ring <= $now ) {
+			$ring                  = $repeats - (int) $row->rings_left;
+			$changes['rings_left'] = (int) $row->rings_left - 1;
+			$changes['next_ring']  = $now + 50;
+		}
+		if ( null !== $ring ) {
 			$msg    = gladmoment_push_message( $row->lang, (bool) $row->quiet );
-			$status = gladmoment_push_send_one( $row, wp_json_encode( array_merge( $msg, array( 'quiet' => (bool) $row->quiet, 'url' => './#/home?focus=1' ) ) ) );
+			$status = gladmoment_push_send_one( $row, wp_json_encode( array_merge( $msg, array( 'quiet' => (bool) $row->quiet, 'url' => './#/home?focus=1', 'repeat' => $ring ) ) ) );
 			if ( 404 === $status || 410 === $status ) {
 				$wpdb->delete( $table, array( 'id' => $row->id ) );
 				$removed++;
@@ -409,7 +453,10 @@ function gladmoment_push_send_due() {
 			}
 		}
 		if ( count( $left ) !== count( $times ) ) {
-			$wpdb->update( $table, array( 'times' => wp_json_encode( $left ) ), array( 'id' => $row->id ) );
+			$changes['times'] = wp_json_encode( $left );
+		}
+		if ( $changes ) {
+			$wpdb->update( $table, $changes, array( 'id' => $row->id ) );
 		}
 	}
 	update_option( 'gladmoment_push_last_run', $now, false );

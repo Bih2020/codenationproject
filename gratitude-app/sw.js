@@ -1,5 +1,5 @@
 // Service worker: offline app shell + notification click handling.
-const CACHE = 'gladmoment-v11';
+const CACHE = 'gladmoment-v12';
 const SHELL = [
   './', './index.html', './privacy.html', './privacy-fr.html', './js/i18n.js', './js/i18n/fr.js', './manifest.webmanifest', './css/styles.css',
   './js/app.js', './js/store.js', './js/schedule.js', './js/stats.js', './js/prompts.js', './js/dates.js',
@@ -42,8 +42,24 @@ self.addEventListener('fetch', (event) => {
 });
 
 // Tapping a reminder opens (or focuses) the app on the gratitude-entry screen.
+// Tell gemrhythm.com the reminder was answered, so it stops ringing again.
+function ackServer() {
+  return self.registration.pushManager.getSubscription()
+    .then((sub) => sub && fetch(new URL('../?rest_route=/gladmoment/v1/push/ack', self.registration.scope).href, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: sub.endpoint }),
+    }))
+    .catch(() => undefined);
+}
+
+self.addEventListener('notificationclose', (event) => {
+  if (event.notification.tag === 'gratitude-reminder') event.waitUntil(ackServer());
+});
+
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  ackServer();
   const target = new URL(event.notification.data?.url || './#/home?focus=1', self.registration.scope).href;
   event.waitUntil(
     Promise.all([
@@ -52,7 +68,7 @@ self.addEventListener('notificationclick', (event) => {
     ]).then(([clients, shown]) => {
       // The app already rang for this reminder itself (it was running in the background):
       // refresh that notification silently instead of ringing twice.
-      const recent = shown.find((n) => Date.now() - (n.data?.shownAt || 0) < 5 * 60 * 1000);
+      const recent = !data.repeat && shown.find((n) => Date.now() - (n.data?.shownAt || 0) < 5 * 60 * 1000);
       if (recent) {
         return self.registration.showNotification(recent.title, {
           body: recent.body, icon: './icons/icon-192.png', badge: './icons/icon-192.png',
@@ -84,7 +100,7 @@ self.addEventListener('push', (event) => {
     ]).then(([clients, shown]) => {
       // The app already rang for this reminder itself (it was running in the background):
       // refresh that notification silently instead of ringing twice.
-      const recent = shown.find((n) => Date.now() - (n.data?.shownAt || 0) < 5 * 60 * 1000);
+      const recent = !data.repeat && shown.find((n) => Date.now() - (n.data?.shownAt || 0) < 5 * 60 * 1000);
       if (recent) {
         return self.registration.showNotification(recent.title, {
           body: recent.body, icon: './icons/icon-192.png', badge: './icons/icon-192.png',

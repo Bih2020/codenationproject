@@ -5,7 +5,7 @@ import { icons, esc, toast } from './ui.js';
 import { t, setLanguage, detectLanguage } from './i18n.js';
 import { unlockAudio, prepareBell } from './sounds.js';
 import { loadSiteConfig } from './config.js';
-import { syncPush, readPushStatus } from './push.js';
+import { syncPush, readPushStatus, ackPush } from './push.js';
 import * as home from './views/home.js';
 import * as journal from './views/journal.js';
 import * as insights from './views/insights.js';
@@ -209,9 +209,13 @@ document.addEventListener('visibilitychange', () => {
   // Keep the 30-day schedule topped up: refresh at most every 6 hours.
   const last = readPushStatus()?.at || 0;
   if (document.visibilityState === 'visible' && Date.now() - last > 6 * 3600 * 1000) schedulePushSync(500);
+  // Opening Gladmoment answers the reminder: the website stops ringing again.
+  if (document.visibilityState === 'visible') ackPush();
 });
+if (document.visibilityState === 'visible') ackPush();
 navigator.serviceWorker?.addEventListener('message', (ev) => {
   if (ev.data?.type !== 'push-reminder' || document.visibilityState !== 'visible') return;
+  ackPush(); // the app is on screen and rings its own bell
   if (Date.now() - (engine.lastDelivered || 0) > 2 * 60 * 1000) engine.deliver(new Date());
 });
 

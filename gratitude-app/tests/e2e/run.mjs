@@ -646,7 +646,7 @@ await t('push: closed-app reminders sync with the site; service worker rings whe
       toJSON() { return { endpoint: this.endpoint, keys: { p256dh: 'BP' + 'A'.repeat(85), auth: 'AAAAAAAAAAAAAAAAAAAAAA' } }; },
       unsubscribe: async () => true,
     };
-    let subscribed = false;
+    let subscribed = (() => { try { return Boolean(localStorage.getItem('gratitude-moments:push')); } catch { return false; } })();
     PushManager.prototype.getSubscription = async () => (subscribed ? sub : null);
     PushManager.prototype.subscribe = async (opts) => {
       if (!(opts.applicationServerKey instanceof Uint8Array) || opts.applicationServerKey.length !== 65) throw new Error('bad key');
@@ -664,15 +664,21 @@ await t('push: closed-app reminders sync with the site; service worker rings whe
       posts.push(body);
       return route.fulfill({ json: { ok: true, scheduled: body.times.length } });
     }
+    if (r.endsWith('/push/ack')) { posts.push({ ack: route.request().postDataJSON().endpoint }); return route.fulfill({ json: { ok: true } }); }
     if (r.endsWith('/push/unsubscribe')) { posts.push({ unsubscribed: route.request().postDataJSON().endpoint }); return route.fulfill({ json: { ok: true } }); }
     return route.fulfill({ status: 404, body: '' });
   });
   await onboard(page);
   await page.waitForFunction(() => JSON.parse(localStorage.getItem('gratitude-moments:push') || '{}').state === 'on', null, { timeout: 8000 });
-  const first = posts.at(-1);
+  const first = posts.filter((x) => x.subscription).at(-1);
   const now = Date.now() / 1000;
   assert.equal(first.subscription.endpoint, 'https://fcm.googleapis.com/fcm/send/test-phone');
   assert.equal(first.lang, 'en');
+  assert.equal(first.repeat, 'three');
+  await page.reload();
+  await page.waitForFunction(() => document.querySelector('#gratitude-text'));
+  await page.waitForTimeout(500);
+  assert.ok(posts.some((x) => x.ack), 'opening the app tells the website the reminder was answered');
   assert.ok(first.times.length > 50, `only ${first.times.length} times`);
   assert.ok(first.times.every((x) => x > now - 60 && x < now + 31 * 86400));
   assert.ok(!JSON.stringify(first).includes('grateful'), 'no journal content is sent');
@@ -684,11 +690,11 @@ await t('push: closed-app reminders sync with the site; service worker rings whe
   await page.waitForSelector('.toast');
   await page.waitForTimeout(300);
   assert.ok(posts.length > before);
-  assert.ok(posts.at(-1).times.some((x) => Math.abs(x - (Date.now() / 1000 + 60)) < 15));
+  assert.ok(posts.filter((x) => x.times).at(-1).times.some((x) => Math.abs(x - (Date.now() / 1000 + 60)) < 15));
   // Turning the bell off clears the server's times.
   await page.evaluate(() => window.__gratitude.store.updateReminders({ enabled: false }));
   await page.waitForTimeout(2200);
-  assert.equal(posts.at(-1).times.length, 0);
+  assert.equal(posts.filter((x) => x.times).at(-1).times.length, 0);
   await page.evaluate(() => window.__gratitude.store.updateReminders({ enabled: true }));
 
   // A push arriving while the app is closed shows a system notification.
@@ -714,7 +720,7 @@ await t('push: closed-app reminders sync with the site; service worker rings whe
     }
     return [];
   });
-  assert.deepEqual(shown[0], ['A little gratitude moment 💛', 'gratitude-reminder', true]);
+  assert.deepEqual(shown[0], ['A little gratitude moment 💛', 'gratitude-reminder', true], JSON.stringify(shown));
   // If the app already rang for this reminder, the website's push doesn't ring a second time.
   await helper.evaluate(async () => {
     const reg = await navigator.serviceWorker.ready;
@@ -727,7 +733,17 @@ await t('push: closed-app reminders sync with the site; service worker rings whe
   });
   await helper.waitForTimeout(800);
   const after = await helper.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => n.title));
-  assert.deepEqual(after, ['From the app']);
+  assert.deepEqual(after, ['From the app'], JSON.stringify(after));
+  // A repeat ring (the person hasn't answered yet) always rings.
+  await helper.goto('about:blank');
+  await cdp.send('ServiceWorker.deliverPushMessage', {
+    origin: URL_.slice(0, -1), registrationId: reg.registrationId,
+    data: JSON.stringify({ title: 'Ring again', body: 'site', repeat: 1 }),
+  });
+  await helper.waitForTimeout(800);
+  await helper.goto(`${URL_}privacy.html`);
+  const again = await helper.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => n.title));
+  assert.deepEqual(again, ['Ring again'], JSON.stringify(again));
   await helper.context().close();
 });
 

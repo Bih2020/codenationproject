@@ -833,6 +833,7 @@ export default {
   "What's one thing a family member has done that you're grateful for?": "Qu’a fait un membre de votre famille qui vous remplit de gratitude ?",
   "When did fresh air make you feel better?": "Quand l’air frais vous a-t-il fait du bien ?",
   "When did you feel part of something bigger?": "Quand vous êtes-vous senti appartenir à quelque chose de plus grand ?",
+  "When Gladmoment is closed, the bell rings about once a minute (3 times, or up to 5 for “Until I respond”) and stops when you tap the reminder or open the app.": "Quand Gladmoment est fermée, la cloche sonne environ une fois par minute (3 fois, ou jusqu’à 5 fois pour « Jusqu’à ma réponse ») et s’arrête quand vous touchez le rappel ou ouvrez l’application.",
   "When should reminders be active?": "Quand les rappels doivent-ils être actifs ?",
   "Whenever you have a moment, pause and notice one good thing. It only takes a few seconds.": "Dès que vous avez un instant, faites une pause et remarquez une bonne chose. Cela ne prend que quelques secondes.",
   "Which animal or bird brought you a moment of joy?": "Quel animal ou quel oiseau vous a offert un moment de joie ?",
