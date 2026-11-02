@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Gladmoment
  * Description:       A gentle gratitude reminder and journal. Installs the Gladmoment app at yoursite.com/gladmoment/ and adds the [gladmoment_landing] and [gladmoment_button] shortcodes.
- * Version:           1.5.0
+ * Version:           1.6.0
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Gemrhythm
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GLADMOMENT_VERSION', '1.5.0' );
+define( 'GLADMOMENT_VERSION', '1.6.0' );
 define( 'GLADMOMENT_SLUG', 'gladmoment' );
 define( 'GLADMOMENT_SOURCE', __DIR__ . '/app' );
 define( 'GLADMOMENT_MARKER', '.gladmoment-plugin' );
@@ -69,6 +69,23 @@ function gladmoment_delete_dir( $dir ) {
 	@rmdir( $dir );
 }
 
+/** Settings the app reads from config.json: playlist link and pause music. */
+function gladmoment_site_config() {
+	$tracks = array_values( array_filter( (array) get_option( 'gladmoment_pause_tracks', array() ) ) );
+	return array(
+		'musicUrl'    => (string) get_option( 'gladmoment_music_url', 'https://gemrhythm.com/playlist-category/relaxation/' ),
+		'pauseTracks' => $tracks,
+	);
+}
+
+/** Write config.json into the installed app folder (when the app is served from there). */
+function gladmoment_write_config() {
+	$target = gladmoment_target_dir();
+	if ( file_exists( $target . '/' . GLADMOMENT_MARKER ) ) {
+		@file_put_contents( $target . '/config.json', wp_json_encode( gladmoment_site_config() ) );
+	}
+}
+
 /** Clear LiteSpeed Cache (common on Hostinger) so visitors don't see an old "page not found". */
 function gladmoment_purge_cache() {
 	do_action( 'litespeed_purge_all' );
@@ -101,6 +118,7 @@ function gladmoment_install() {
 	if ( $ok ) {
 		@file_put_contents( $target . '/' . GLADMOMENT_MARKER, GLADMOMENT_VERSION );
 		update_option( 'gladmoment_status', 'ok' );
+		gladmoment_write_config();
 	} else {
 		// Remove a half-copied folder so WordPress can serve the app instead.
 		if ( is_dir( $target ) && file_exists( $target . '/' . GLADMOMENT_MARKER ) === false ) {
@@ -135,6 +153,16 @@ function gladmoment_serve_fallback() {
 	$rel = ltrim( rawurldecode( substr( $path, strlen( $base ) ) ), '/' );
 	if ( '' === $rel ) {
 		$rel = 'index.html';
+	}
+	if ( 'config.json' === $rel ) {
+		if ( ! defined( 'DONOTCACHEPAGE' ) ) {
+			define( 'DONOTCACHEPAGE', true );
+		}
+		status_header( 200 );
+		header( 'Content-Type: application/json' );
+		header( 'Cache-Control: no-cache' );
+		echo wp_json_encode( gladmoment_site_config() );
+		exit;
 	}
 	// Never serve hidden files, and never leave the app folder.
 	foreach ( explode( '/', $rel ) as $part ) {
@@ -387,6 +415,31 @@ add_action(
 );
 
 add_action(
+	'admin_post_gladmoment_music',
+	function () {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Not allowed.' );
+		}
+		check_admin_referer( 'gladmoment_music' );
+		$music = isset( $_POST['music_url'] ) ? esc_url_raw( trim( wp_unslash( $_POST['music_url'] ) ), array( 'http', 'https' ) ) : '';
+		update_option( 'gladmoment_music_url', $music ? $music : 'https://gemrhythm.com/playlist-category/relaxation/' );
+		$tracks = array();
+		$lines  = isset( $_POST['pause_tracks'] ) ? preg_split( '/[\r\n]+/', (string) wp_unslash( $_POST['pause_tracks'] ) ) : array();
+		foreach ( $lines as $line ) {
+			$url = esc_url_raw( trim( $line ), array( 'http', 'https' ) );
+			if ( $url ) {
+				$tracks[] = $url;
+			}
+		}
+		update_option( 'gladmoment_pause_tracks', array_slice( $tracks, 0, 20 ) );
+		gladmoment_write_config();
+		gladmoment_purge_cache();
+		wp_safe_redirect( admin_url( 'options-general.php?page=gladmoment&music=1' ) );
+		exit;
+	}
+);
+
+add_action(
 	'admin_post_gladmoment_repair',
 	function () {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -437,6 +490,21 @@ function gladmoment_settings_page() {
 	wp_nonce_field( 'gladmoment_repair' );
 	echo '<input type="hidden" name="action" value="gladmoment_repair">';
 	submit_button( 'Repair Gladmoment', 'primary', 'submit', false );
+	echo '</form>';
+	if ( isset( $_GET['music'] ) ) {
+		echo '<div class="notice notice-success"><p>Music settings saved.</p></div>';
+	}
+	$cfg = gladmoment_site_config();
+	echo '<h2>Music</h2>';
+	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+	wp_nonce_field( 'gladmoment_music' );
+	echo '<input type="hidden" name="action" value="gladmoment_music">';
+	echo '<p><label for="gm-music-url"><strong>Playlist link</strong> (the "relaxation playlists" link on the app’s Home screen, Insights and after the pause)</label><br>';
+	echo '<input type="url" id="gm-music-url" name="music_url" class="large-text" value="' . esc_attr( $cfg['musicUrl'] ) . '"></p>';
+	echo '<p><label for="gm-tracks"><strong>Pause music</strong>: links to audio files (MP3), one per line. The 1-minute pause plays one of them at random.</label><br>';
+	echo '<textarea id="gm-tracks" name="pause_tracks" rows="5" class="large-text code" placeholder="https://gemrhythm.com/wp-content/uploads/2026/11/relaxing-track.mp3">' . esc_textarea( implode( "\n", $cfg['pauseTracks'] ) ) . '</textarea>';
+	echo '<span class="description">How to get a link: Media → Library → click the track → <em>Copy URL to clipboard</em>. If this is empty, the pause plays gentle chimes.</span></p>';
+	submit_button( 'Save music settings', 'secondary', 'submit', false );
 	echo '</form>';
 	echo '<h2>Show Gladmoment to your visitors</h2><ul style="list-style:disc;padding-left:20px">';
 	echo '<li><strong>Menu:</strong> Appearance → Menus → Custom Links → URL <code>' . esc_html( $url ) . '</code></li>';

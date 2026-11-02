@@ -55,8 +55,8 @@ The browser tests save screenshots to `tests/e2e/screenshots/`.
 | Weekly summary (count, top themes, most active day, favourites, day-by-day chart, week navigation) | ✅ Works |
 | "A Gratitude From the Past" (your own entries only, favours 1-week, 1, 3 or 6-month and 1-year anniversaries) | ✅ Works |
 | Light, dark and system themes, three text sizes, reduce-motion option | ✅ Works |
-| Bell sounds (singing bowl, chime, wind chimes, piano, harp), made in the app with no audio files; volume Soft/Medium/Loud (limiter keeps Loud clean); rings once, 3 times or until answered | ✅ Works |
-| 1-minute gratitude pause: breathing guide, calm soundscape, link to Gemrhythm relaxation playlists (`js/config.js`); "From Gemrhythm" card on Insights | ✅ Works |
+| Bell sounds: Clear bell (default) and Door chime are pitched for phone speakers; also Singing bowl, Soft chime, Wind chimes, Piano, Harp. Each is rendered to a WAV at full scale and played through an audio element; volume Soft/Medium/Loud; rings once, 3 times or until answered | ✅ Works |
+| 1-minute gratitude pause: breathing guide; plays your own tracks (WordPress → Settings → Gladmoment → Pause music, saved to `config.json`) or gentle music-box chimes; playlist link on Home, Insights and after the pause | ✅ Works |
 | Shareable gratitude cards (3 styles, 1080×1350) via the phone's share menu, or saved as an image | ✅ Works |
 | Gratitude challenges (7, 21, 30 days); missed days never reset progress | ✅ Works |
 | WordPress plugin with `[gladmoment_landing]` and `[gladmoment_button]` shortcodes | ✅ Works |

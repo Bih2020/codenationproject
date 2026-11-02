@@ -173,7 +173,7 @@ export function render(ctx) {
           <ul class="sound-list">
             ${BELL_SOUNDS.map((b) => `<li class="sound-row">
               <label class="radio-pill sound-pill" for="bell-sound-${b.id}">
-                <input type="radio" name="bell-sound" id="bell-sound-${b.id}" value="${b.id}" ${(rs.bellSound || 'bowl') === b.id ? 'checked' : ''}>
+                <input type="radio" name="bell-sound" id="bell-sound-${b.id}" value="${b.id}" ${(rs.bellSound || 'clear') === b.id ? 'checked' : ''}>
                 <span><strong>${esc(t(b.label))}</strong><small>${esc(t(b.desc))}</small></span>
               </label>
               <button type="button" class="icon-btn play-btn" data-play="${b.id}" aria-label="${esc(t('Play {sound}', { sound: t(b.label) }))}">▶</button>
@@ -273,7 +273,7 @@ export function render(ctx) {
       <p class="muted small">${t('No account is used, so there is no online account to delete.')} <a class="link" href="./${getLanguage() === 'fr' ? 'privacy-fr.html' : 'privacy.html'}" target="_blank" rel="noopener">${t('Read the privacy policy')}</a></p>
     </section>
 
-    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.5' })}</p>
+    <p class="about muted small">Gladmoment · ${t('works offline')} · ${t('version {v}', { v: '1.6' })}</p>
   </div>`;
 }
 
@@ -381,7 +381,7 @@ export function mount(root, ctx, params) {
   });
   root.querySelectorAll('input[name="bell-sound"]').forEach((r) =>
     r.addEventListener('change', () => {
-      store.updateReminders({ bellSound: r.value });
+      store.updateReminders({ bellSound: r.value, bellSoundChosen: true });
       playBell(r.value, { volume: rs().bellVolume });
     })
   );

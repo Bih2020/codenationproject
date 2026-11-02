@@ -1,5 +1,5 @@
 // Service worker: offline app shell + notification click handling.
-const CACHE = 'gladmoment-v7';
+const CACHE = 'gladmoment-v8';
 const SHELL = [
   './', './index.html', './privacy.html', './privacy-fr.html', './js/i18n.js', './js/i18n/fr.js', './manifest.webmanifest', './css/styles.css',
   './js/app.js', './js/store.js', './js/schedule.js', './js/stats.js', './js/prompts.js', './js/dates.js',

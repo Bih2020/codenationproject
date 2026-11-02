@@ -3,7 +3,8 @@ import { createStore } from './store.js';
 import { ReminderEngine, notificationSupport } from './notifications.js';
 import { icons, esc, toast } from './ui.js';
 import { t, setLanguage, detectLanguage } from './i18n.js';
-import { unlockAudio } from './sounds.js';
+import { unlockAudio, prepareBell } from './sounds.js';
+import { loadSiteConfig } from './config.js';
 import * as home from './views/home.js';
 import * as journal from './views/journal.js';
 import * as insights from './views/insights.js';
@@ -219,6 +220,7 @@ store.subscribe(() => {
   if (rs !== lastSnapshot) {
     lastSnapshot = rs;
     engine.resync();
+    prepareBell(store.state.reminderSettings.bellSound);
   }
   render();
 });
@@ -236,6 +238,8 @@ applyAppearance();
 lastSnapshot = JSON.stringify(store.state.reminderSettings);
 engine.start();
 render({ routeChange: true });
+prepareBell(store.state.reminderSettings.bellSound);
+loadSiteConfig().then(() => current.name === 'home' && render());
 
 if (store.warning) toast(t(store.warning), { duration: 9000 });
 

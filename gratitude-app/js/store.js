@@ -71,6 +71,8 @@ export function migrate(raw, now = new Date()) {
     ui: { ...base.ui, ...(raw.ui || {}) },
     schemaVersion: SCHEMA_VERSION,
   };
+  // Earlier versions defaulted to the deep singing bowl, which is hard to hear on phone speakers.
+  if (s.reminderSettings.bellSound === 'bowl' && !s.reminderSettings.bellSoundChosen) s.reminderSettings.bellSound = 'clear';
   if (!Array.isArray(s.reminderSettings.days) || s.reminderSettings.days.length !== 7) {
     s.reminderSettings.days = base.reminderSettings.days;
   }

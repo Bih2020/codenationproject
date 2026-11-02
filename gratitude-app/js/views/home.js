@@ -299,6 +299,7 @@ export function render(ctx) {
         <p class="muted small">${esc(t('Breathe with calming {site} sounds, then notice one good thing.', { site: BRAND.siteName }))}</p>
       </div>
       <button type="button" class="btn btn-primary" id="open-pause">${t('Begin')}</button>
+      <a class="pause-card-link" href="${esc(BRAND.musicUrl)}" target="_blank" rel="noopener">🎵 ${esc(t('{site} relaxation playlists', { site: BRAND.siteName }))} <span aria-hidden="true">→</span></a>
     </section>
 
     ${reflectionDue ? `<section class="card reflect-nudge" aria-labelledby="reflect-nudge-title">

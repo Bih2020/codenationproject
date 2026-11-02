@@ -52,7 +52,7 @@ export function openPause({ onWrite } = {}) {
   document.body.classList.add('no-scroll');
   const previous = document.activeElement;
 
-  let sound = startSoundscape({ trackUrl: BRAND.pauseTrackUrl });
+  let sound = startSoundscape({ tracks: BRAND.pauseTracks, trackUrl: BRAND.pauseTrackUrl });
   let soundOn = true;
   let left = DURATION;
   let step = 0;
@@ -115,7 +115,7 @@ export function openPause({ onWrite } = {}) {
     soundOn = !soundOn;
     ev.currentTarget.setAttribute('aria-pressed', String(soundOn));
     ev.currentTarget.textContent = soundOn ? `🔈 ${t('Sound on')}` : `🔇 ${t('Sound off')}`;
-    if (soundOn) sound = startSoundscape({ trackUrl: BRAND.pauseTrackUrl });
+    if (soundOn) sound = startSoundscape({ tracks: BRAND.pauseTracks, trackUrl: BRAND.pauseTrackUrl });
     else {
       sound?.stop();
       sound = null;

@@ -347,7 +347,9 @@ export const PAUSE_STEPS = [
 ];
 
 export const BELL_SOUNDS = [
-  { label: 'Bol chantant', desc: 'Profond et apaisant' },
+  { label: 'Cloche claire', desc: 'Lumineuse et facile à entendre' },
+  { label: 'Carillon de porte', desc: 'Un ding-dong chaleureux' },
+  { label: 'Bol chantant', desc: 'Profond et apaisant (plus discret sur un haut-parleur de téléphone)' },
   { label: 'Carillon doux', desc: 'Deux notes légères' },
   { label: 'Carillon à vent', desc: 'Doux et aérien' },
   { label: 'Note de piano', desc: 'Chaleureuse et simple' },

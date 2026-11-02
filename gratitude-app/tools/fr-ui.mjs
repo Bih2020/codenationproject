@@ -480,4 +480,5 @@ export default {
   Ring: 'Sonnerie',
   '“Until I respond” rings about every 4 seconds for up to a minute, and stops as soon as you tap the reminder.': '« Jusqu’à ma réponse » sonne environ toutes les 4 secondes pendant une minute au maximum, et s’arrête dès que vous touchez le rappel.',
   'Tip: your phone’s own volume also matters. Turn it up and make sure silent mode is off.': 'Astuce : le volume de votre téléphone compte aussi. Montez-le et vérifiez que le mode silencieux est désactivé.',
+  '{site} relaxation playlists': 'Playlists de relaxation {site}',
 };

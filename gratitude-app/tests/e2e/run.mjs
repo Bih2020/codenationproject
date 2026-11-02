@@ -593,6 +593,50 @@ await t('bell: rings 3 times by default, "until I respond" stops when tapped, vo
   assert.deepEqual(page.errors, []);
 });
 
+await t('loud bright bell as an audio file; pause plays your music; playlist link on Home', async () => {
+  const { writeFileSync, unlinkSync, readFileSync } = await import('node:fs');
+  const appDir = new URL('../../', import.meta.url);
+  const originalConfig = readFileSync(new URL('config.json', appDir));
+  // a short test "relaxation track" and site settings, as WordPress would provide them
+  const { encodeWav } = await import('../../js/sounds.js');
+  const tone = new Float32Array(44100).map((_, i) => 0.3 * Math.sin(i / 10));
+  writeFileSync(new URL('test-track.wav', appDir), Buffer.from(encodeWav(tone, 44100)));
+  writeFileSync(new URL('config.json', appDir), JSON.stringify({ musicUrl: 'https://gemrhythm.com/playlist-category/relaxation/', pauseTracks: [`${URL_}test-track.wav`] }));
+  try {
+    const page = await newPage({ clock: new Date(2026, 10, 2, 10, 0) });
+    await onboard(page);
+    // the bell is rendered to a WAV file at near full volume
+    const peak = await page.evaluate(async () => {
+      const m = await import('./js/sounds.js');
+      const url = await m.prepareBell('clear');
+      const buf = await (await fetch(url)).arrayBuffer();
+      const audio = await new OfflineAudioContext(1, 44100, 44100).decodeAudioData(buf);
+      const d = audio.getChannelData(0);
+      let p = 0; for (let i = 0; i < d.length; i++) p = Math.max(p, Math.abs(d[i]));
+      return p;
+    });
+    assert.ok(peak > 0.9, `bell peak ${peak}`);
+    assert.equal(await page.evaluate(() => window.__gratitude.store.state.reminderSettings.bellSound), 'clear');
+    // playlist link on the Home pause card
+    await page.waitForSelector('.pause-card-link');
+    assert.equal(await page.getAttribute('.pause-card-link', 'href'), 'https://gemrhythm.com/playlist-category/relaxation/');
+    // the pause plays the site's track
+    await page.evaluate(() => {
+      window.__played = [];
+      const orig = HTMLMediaElement.prototype.play;
+      HTMLMediaElement.prototype.play = function () { window.__played.push(this.src); return orig.call(this); };
+    });
+    await page.click('#open-pause');
+    await page.waitForSelector('.pause-overlay');
+    await page.waitForFunction(() => window.__played.some((s) => s.endsWith('test-track.wav')));
+    await page.click('#pause-close');
+    assert.deepEqual(page.errors, []);
+  } finally {
+    unlinkSync(new URL('test-track.wav', appDir));
+    writeFileSync(new URL('config.json', appDir), originalConfig);
+  }
+});
+
 await t('dark mode and theme switching', async () => {
   const page = await newPage({ dark: true });
   await onboard(page);

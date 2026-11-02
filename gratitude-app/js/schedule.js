@@ -25,7 +25,8 @@ export function defaultReminderSettings() {
     weekendEnd: '21:00',
     sound: true,
     vibration: true,
-    bellSound: 'bowl', // see sounds.js
+    bellSound: 'clear', // see sounds.js
+    bellSoundChosen: false, // true once the person picks a bell themselves
     bellVolume: 'loud', // 'soft' | 'medium' | 'loud'
     bellRepeat: 'three', // 'once' | 'three' | 'until' (rings until the reminder is answered)
     quiet: false, // bell mode "vibrate only": no sound, give thanks silently (work, school)
