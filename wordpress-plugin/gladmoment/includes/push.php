@@ -212,6 +212,11 @@ add_action(
 				'permission_callback' => '__return_true',
 				'callback'            => function ( $request ) {
 					$secret = (string) get_option( 'gladmoment_cron_secret' );
+					// Never let LiteSpeed (or any cache) store this answer: every call must really run.
+					do_action( 'litespeed_control_set_nocache', 'gladmoment reminders' );
+					if ( function_exists( 'nocache_headers' ) && ! headers_sent() ) {
+						nocache_headers();
+					}
 					if ( ! $secret || ! hash_equals( $secret, (string) $request->get_param( 'key' ) ) ) {
 						return new WP_Error( 'gladmoment_forbidden', 'Wrong key.', array( 'status' => 403 ) );
 					}
@@ -317,7 +322,50 @@ function gladmoment_push_send_one( $row, $payload ) {
 			'body'    => $body,
 		)
 	);
-	return is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );
+	$status = is_wp_error( $res ) ? 0 : (int) wp_remote_retrieve_response_code( $res );
+	$detail = is_wp_error( $res ) ? $res->get_error_message() : substr( wp_strip_all_tags( (string) wp_remote_retrieve_body( $res ) ), 0, 300 );
+	update_option(
+		'gladmoment_push_last_send',
+		array( 'at' => time(), 'status' => $status, 'service' => (string) wp_parse_url( $row->endpoint, PHP_URL_HOST ), 'detail' => $detail ),
+		false
+	);
+	return $status;
+}
+
+/** Plain-English meaning of a push service answer, for the settings page. */
+function gladmoment_push_status_text( $status ) {
+	if ( $status >= 200 && $status < 300 ) {
+		return '✅ Delivered to the phone’s notification service.';
+	}
+	if ( 0 === $status ) {
+		return '⚠️ Your server could not connect to the notification service. Ask Hostinger support whether outgoing connections to fcm.googleapis.com and web.push.apple.com are allowed.';
+	}
+	if ( 404 === $status || 410 === $status ) {
+		return 'ℹ️ That phone is no longer signed up (app removed or notifications turned off). It has been removed from the list.';
+	}
+	if ( 401 === $status || 403 === $status ) {
+		return '⚠️ The notification service refused the security signature. Send this message to your developer.';
+	}
+	if ( 413 === $status || 400 === $status ) {
+		return '⚠️ The notification service refused the message. Send this message to your developer.';
+	}
+	return '⚠️ The notification service answered with an error. Send this message to your developer.';
+}
+
+/** Send a test reminder to every signed-up phone right now (Settings → Gladmoment button). */
+function gladmoment_push_send_test_now() {
+	global $wpdb;
+	$out = array();
+	foreach ( (array) $wpdb->get_results( 'SELECT * FROM ' . gladmoment_push_table() ) as $row ) {
+		$msg    = gladmoment_push_message( $row->lang, (bool) $row->quiet );
+		$status = gladmoment_push_send_one( $row, wp_json_encode( array_merge( $msg, array( 'quiet' => (bool) $row->quiet, 'url' => './#/home?focus=1' ) ) ) );
+		if ( 404 === $status || 410 === $status ) {
+			$wpdb->delete( gladmoment_push_table(), array( 'id' => $row->id ) );
+		}
+		$last  = get_option( 'gladmoment_push_last_send' );
+		$out[] = array( 'service' => $last['service'], 'status' => $status, 'detail' => $last['detail'] );
+	}
+	return $out;
 }
 
 /**
@@ -417,9 +465,51 @@ function gladmoment_push_settings_section() {
 	} else {
 		echo 'The reminder check hasn’t run yet. Set up the cron job below.</p>';
 	}
+	$sent = get_option( 'gladmoment_push_last_send' );
+	if ( is_array( $sent ) ) {
+		echo '<p>Last reminder sent ' . esc_html( human_time_diff( $sent['at'] ) ) . ' ago to ' . esc_html( $sent['service'] ) . ': answer <code>' . esc_html( $sent['status'] ) . '</code>. ' . esc_html( gladmoment_push_status_text( (int) $sent['status'] ) ) . '</p>';
+		if ( ! ( $sent['status'] >= 200 && $sent['status'] < 300 ) && $sent['detail'] ) {
+			echo '<p class="description">Details: <code>' . esc_html( $sent['detail'] ) . '</code></p>';
+		}
+	}
+	if ( isset( $_GET['pushtest'] ) ) {
+		$results = get_transient( 'gladmoment_push_test_result' );
+		if ( ! $results ) {
+			echo '<div class="notice notice-warning"><p>No phones are signed up yet. Open Gladmoment on your phone, allow notifications, then try again.</p></div>';
+		} else {
+			echo '<div class="notice notice-info"><p><strong>Test sent.</strong> Your phone should ring within a few seconds, even with Gladmoment closed.</p><ul>';
+			foreach ( $results as $r ) {
+				echo '<li>' . esc_html( $r['service'] ) . ': <code>' . esc_html( $r['status'] ) . '</code> ' . esc_html( gladmoment_push_status_text( (int) $r['status'] ) ) . ( $r['status'] >= 300 || 0 === $r['status'] ? ' <code>' . esc_html( $r['detail'] ) . '</code>' : '' ) . '</li>';
+			}
+			echo '</ul></div>';
+		}
+	}
+	echo '<form method="post" action="' . esc_url( admin_url( 'admin-post.php' ) ) . '">';
+	wp_nonce_field( 'gladmoment_push_test' );
+	echo '<input type="hidden" name="action" value="gladmoment_push_test">';
+	submit_button( 'Ring all signed-up phones now (test)', 'secondary', 'submit', false );
+	echo ' <span class="description">Close Gladmoment on your phone first. This doesn’t need the cron job, so it shows whether sending works.</span></form>';
 	echo '<p><strong>One-time setup in Hostinger</strong> (so the bell rings on time, every minute):</p><ol>';
 	echo '<li>hPanel → Websites → gemrhythm.com → <strong>Advanced → Cron Jobs</strong>.</li>';
-	echo '<li>Choose <strong>Custom</strong> and paste this command:<br><input type="text" readonly class="large-text code" onclick="this.select()" value="' . esc_attr( 'wget -q -O /dev/null "' . $url . '"' ) . '"></li>';
+	echo '<li>Choose <strong>Custom</strong> and paste this command (if you added an older Gladmoment cron job, delete it and use this one):<br><input type="text" readonly class="large-text code" onclick="this.select()" value="' . esc_attr( gladmoment_cron_command() ) . '"></li>';
 	echo '<li>Set it to run <strong>every minute</strong> (all five boxes <code>*</code>) and click <strong>Save</strong>.</li></ol>';
 	echo '<p class="description">Keep this link private: it only sends reminders that are due, but it shouldn’t be shared. Without the cron job, WordPress still checks for reminders whenever someone visits your site, which may be late.</p>';
 }
+
+/** The command for the Hostinger cron job. POST, so no cache ever answers it instead of WordPress. */
+function gladmoment_cron_command() {
+	return 'wget -q -O /dev/null --post-data="run=1" "' . gladmoment_cron_url() . '"';
+}
+
+add_action(
+	'admin_post_gladmoment_push_test',
+	function () {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Not allowed.' );
+		}
+		check_admin_referer( 'gladmoment_push_test' );
+		set_transient( 'gladmoment_push_test_result', gladmoment_push_send_test_now(), 300 );
+		wp_safe_redirect( admin_url( 'options-general.php?page=gladmoment&pushtest=1' ) );
+		exit;
+	}
+);
