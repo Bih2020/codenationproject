@@ -11,7 +11,6 @@
 //                    tick, and keeps native schedules in sync with settings.
 import { remindersBetween, upcomingReminders } from './schedule.js';
 import { ringBell } from './sounds.js';
-import { pushActive } from './push.js';
 import { t } from './i18n.js';
 
 export const REMINDER_TITLE = 'A little gratitude moment 💛';
@@ -64,7 +63,7 @@ export async function showWebNotification({ sound = true, vibration = true, quie
     tag: 'gratitude-reminder',
     renotify: true,
     silent: !sound,
-    data: { url: OPEN_URL },
+    data: { url: OPEN_URL, shownAt: Date.now() },
   };
   if (vibration) options.vibrate = [120, 80, 120];
   try {
@@ -163,8 +162,9 @@ export class ReminderEngine {
     if (!nativeLN()) {
       // When the app is hidden (another tab / minimised PWA) use a system notification.
       // When visible, a calm in-app banner is less intrusive.
-      // The server sends a push reminder when the app is hidden; only notify here if push isn't set up.
-      if (!visible && !pushActive()) await showWebNotification(s);
+      // The website's push reminder is skipped by the service worker if this one was just shown,
+      // so the phone never stays silent when one of the two routes fails.
+      if (!visible) await showWebNotification(s);
     }
     if (visible) this.ring(s);
     this.onReminder(at, { visible });

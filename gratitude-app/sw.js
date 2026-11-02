@@ -1,5 +1,5 @@
 // Service worker: offline app shell + notification click handling.
-const CACHE = 'gladmoment-v10';
+const CACHE = 'gladmoment-v11';
 const SHELL = [
   './', './index.html', './privacy.html', './privacy-fr.html', './js/i18n.js', './js/i18n/fr.js', './manifest.webmanifest', './css/styles.css',
   './js/app.js', './js/store.js', './js/schedule.js', './js/stats.js', './js/prompts.js', './js/dates.js',
@@ -46,7 +46,19 @@ self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = new URL(event.notification.data?.url || './#/home?focus=1', self.registration.scope).href;
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    Promise.all([
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }),
+      self.registration.getNotifications({ tag: 'gratitude-reminder' }).catch(() => []),
+    ]).then(([clients, shown]) => {
+      // The app already rang for this reminder itself (it was running in the background):
+      // refresh that notification silently instead of ringing twice.
+      const recent = shown.find((n) => Date.now() - (n.data?.shownAt || 0) < 5 * 60 * 1000);
+      if (recent) {
+        return self.registration.showNotification(recent.title, {
+          body: recent.body, icon: './icons/icon-192.png', badge: './icons/icon-192.png',
+          tag: 'gratitude-reminder', renotify: false, silent: true, data: recent.data,
+        });
+      }
       for (const client of clients) {
         if (client.url.startsWith(self.registration.scope)) {
           client.postMessage({ type: 'open-entry' });
@@ -66,7 +78,19 @@ self.addEventListener('push', (event) => {
     data = event.data ? event.data.json() : {};
   } catch { /* plain or empty message */ }
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+    Promise.all([
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true }),
+      self.registration.getNotifications({ tag: 'gratitude-reminder' }).catch(() => []),
+    ]).then(([clients, shown]) => {
+      // The app already rang for this reminder itself (it was running in the background):
+      // refresh that notification silently instead of ringing twice.
+      const recent = shown.find((n) => Date.now() - (n.data?.shownAt || 0) < 5 * 60 * 1000);
+      if (recent) {
+        return self.registration.showNotification(recent.title, {
+          body: recent.body, icon: './icons/icon-192.png', badge: './icons/icon-192.png',
+          tag: 'gratitude-reminder', renotify: false, silent: true, data: recent.data,
+        });
+      }
       // If Gladmoment is open on screen it rings its own bell, so don't double up.
       const open = clients.find((c) => c.visibilityState === 'visible');
       if (open) {

@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Gladmoment
  * Description:       A gentle gratitude reminder and journal. Installs the Gladmoment app at yoursite.com/gladmoment/ and adds the [gladmoment_landing] and [gladmoment_button] shortcodes.
- * Version:           1.7.0
+ * Version:           1.7.1
  * Requires at least: 5.8
  * Requires PHP:      7.4
  * Author:            Gemrhythm
@@ -14,7 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-define( 'GLADMOMENT_VERSION', '1.7.0' );
+define( 'GLADMOMENT_VERSION', '1.7.1' );
 define( 'GLADMOMENT_SLUG', 'gladmoment' );
 define( 'GLADMOMENT_SOURCE', __DIR__ . '/app' );
 define( 'GLADMOMENT_MARKER', '.gladmoment-plugin' );

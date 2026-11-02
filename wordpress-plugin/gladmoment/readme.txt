@@ -3,7 +3,7 @@ Contributors: gemrhythm
 Tags: gratitude, journal, wellbeing, reminders
 Requires at least: 5.8
 Requires PHP: 7.4
-Stable tag: 1.7.0
+Stable tag: 1.7.1
 License: MIT
 
 A gentle gratitude reminder and journal for your visitors.
@@ -27,6 +27,8 @@ Shortcodes:
 Deactivating the plugin removes the /gladmoment/ folder it created.
 
 == Changelog ==
+= 1.7.1 =
+* The app rings by itself whenever it is running, so a reminder is never missed if the website push is delayed (no double ring).
 = 1.7.0 =
 * Reminders ring even when Gladmoment is closed (Web Push), on Android and on iPhone (Home Screen app).
 = 1.6.0 =

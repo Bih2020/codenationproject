@@ -715,6 +715,19 @@ await t('push: closed-app reminders sync with the site; service worker rings whe
     return [];
   });
   assert.deepEqual(shown[0], ['A little gratitude moment 💛', 'gratitude-reminder', true]);
+  // If the app already rang for this reminder, the website's push doesn't ring a second time.
+  await helper.evaluate(async () => {
+    const reg = await navigator.serviceWorker.ready;
+    for (const n of await reg.getNotifications()) n.close();
+    await reg.showNotification('From the app', { tag: 'gratitude-reminder', body: 'app', data: { shownAt: Date.now() } });
+  });
+  await cdp.send('ServiceWorker.deliverPushMessage', {
+    origin: URL_.slice(0, -1), registrationId: reg.registrationId,
+    data: JSON.stringify({ title: 'From the website', body: 'site' }),
+  });
+  await helper.waitForTimeout(800);
+  const after = await helper.evaluate(async () => (await (await navigator.serviceWorker.ready).getNotifications()).map((n) => n.title));
+  assert.deepEqual(after, ['From the app']);
   await helper.context().close();
 });
 
